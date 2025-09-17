@@ -1,13 +1,5 @@
-#include "logic/eval_var.h"
+#include "logic/eval.h"
 #include "helpers/interpreter.h"
-
-void setVar(String name, float value) { 
-  variables[name] = value; 
-}
-
-float getVar(String name) { 
-  return variables.count(name) ? variables[name] : 0; 
-}
 
 // Simple arithmetic evaluator: + - * / (left-to-right)
 float evalNumber(String expr) {

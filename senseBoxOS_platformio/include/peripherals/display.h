@@ -1,5 +1,4 @@
-#ifndef DISPLAY_H
-#define DISPLAY_H
+#pragma once
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -13,5 +12,3 @@ extern bool oledInitialized;
 void initDisplay();
 void  displayNumber(float value);
 void handleDisplay(String args);
-
-#endif

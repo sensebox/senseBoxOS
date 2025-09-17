@@ -1,5 +1,4 @@
-#ifndef INTERPRETER_H
-#define INTERPRETER_H
+#pragma once
 
 #include <Arduino.h>
 #include <vector>
@@ -13,5 +12,3 @@ extern bool runForever;   // RUNLOOP mode
 void executeLine(String line, int& pc);
 void runScript();
 bool pumpControl();
-
-#endif

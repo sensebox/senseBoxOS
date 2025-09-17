@@ -8,7 +8,8 @@
 #include "helpers/block.h"
 #include "helpers/interpreter.h"
 
-#include "logic/eval_var.h"
+#include "logic/eval.h"
+#include "logic/var.h"
 #include "logic/time.h"
 #include "peripherals/hdc.h"
 #include "peripherals/display.h"

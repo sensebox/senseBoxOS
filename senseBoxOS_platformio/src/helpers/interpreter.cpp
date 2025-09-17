@@ -1,7 +1,8 @@
 #include "helpers/interpreter.h"
 #include "helpers/block.h"
 #include "peripherals/hdc.h"   // for readSensor()
-#include "logic/eval_var.h"
+#include "logic/eval.h"
+#include "logic/var.h"
 #include "commands.h"
 
 std::map<String, float> variables;

@@ -1,5 +1,4 @@
-#ifndef BLOCK_H
-#define BLOCK_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -14,5 +13,3 @@ int countChar(const String& s, char ch);
 int indentedBlockEndAfter(int ctrlIdx);
 Block getFollowingBlock(int ctrlIdx);
 void runBlock(int start, int end);
-
-#endif
