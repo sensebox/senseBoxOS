@@ -13,15 +13,17 @@ Its a ESP32-S2 Pseudocode Interpreter. Currently only serial connection is suppo
 
 ### Example script:
 ```
-temperature = readSensor
-if(temperature > 25) {
+temperatureHDC = readHDC
+temperatureBME = readBME
+if(temperatureHDC > 25) {
   led(255,0,0)
-} else {
+} 
+else {
   led(0,0,0)
 }
-display(temperature)
+display(temperatureHDC)
+display(temperatureBME)
 delay(1000)
-RUNLOOP
 ```
 for-loop example (now brace-aware):
 ```

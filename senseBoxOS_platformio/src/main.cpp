@@ -11,9 +11,6 @@
 #include "logic/eval.h"
 #include "logic/var.h"
 #include "logic/time.h"
-// #include "peripherals/sensors/sensor.h"
-// #include "peripherals/sensors/bme680.h"
-// #include "peripherals/sensors/hdc.h"
 #include "peripherals/display.h"
 #include "peripherals/led.h"
 

@@ -1,10 +1,15 @@
 #include "helpers/interpreter.h"
 #include "helpers/block.h"
-// #include "peripherals/sensors/hdc.h"   // for readSensor()
 #include "logic/eval.h"
 #include "logic/var.h"
+#include "peripherals/sensors/hdc.h"
+#include "peripherals/sensors/bme680.h"
 #include "commands.h"
 // TODO: including everything here seems suboptimal
+
+// sensor instances
+HDC1000Sensor hdc;
+BME680Sensor bme680;
 
 std::map<String, float> variables;
 std::vector<String> scriptLines;
@@ -133,8 +138,15 @@ void executeLine(String line, int& pc) {
   } else if (eq != -1) {
     String var = line.substring(0, eq); var.trim();
     String val = line.substring(eq + 1); val.trim();
-    if (val == "readSensor") setVar(var, evalNumber(val));
-    else                     setVar(var, evalNumber(val));
+    if (val == "readHDC") {
+      setVar(var, hdc.read());
+    }
+    else if (val == "readBME") {
+      setVar(var, bme680.read());
+    }
+    else {
+      setVar(var, evalNumber(val));
+    }
     return;
   }
 

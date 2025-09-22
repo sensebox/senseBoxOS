@@ -11,4 +11,5 @@ private:
     bool begin() override;
     Bsec2 bme680;
     bool initialized;
+    static bsecSensor sensorList[14];
 };
