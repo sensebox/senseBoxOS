@@ -1,9 +1,10 @@
 #include "helpers/interpreter.h"
 #include "helpers/block.h"
-#include "peripherals/hdc.h"   // for readSensor()
+// #include "peripherals/sensors/hdc.h"   // for readSensor()
 #include "logic/eval.h"
 #include "logic/var.h"
 #include "commands.h"
+// TODO: including everything here seems suboptimal
 
 std::map<String, float> variables;
 std::vector<String> scriptLines;
@@ -132,7 +133,7 @@ void executeLine(String line, int& pc) {
   } else if (eq != -1) {
     String var = line.substring(0, eq); var.trim();
     String val = line.substring(eq + 1); val.trim();
-    if (val == "readSensor") setVar(var, readSensor());
+    if (val == "readSensor") setVar(var, evalNumber(val));
     else                     setVar(var, evalNumber(val));
     return;
   }
