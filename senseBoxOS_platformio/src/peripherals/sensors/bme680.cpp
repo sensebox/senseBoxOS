@@ -26,7 +26,7 @@ bool BME680Sensor::begin() {
     return false;
   }
 
-  bme680.updateSubscription(sensorList, ARRAY_LEN(sensorList), BSEC_SAMPLE_RATE_ULP);
+  bme680.updateSubscription(sensorList, ARRAY_LEN(sensorList), 10);
   if (bme680.status != BSEC_OK || bme680.sensor.status != BME68X_OK) {
     return false;
   }
