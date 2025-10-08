@@ -7,25 +7,29 @@
 
 #include "helpers/block.h"
 #include "helpers/interpreter.h"
+#include "helpers/sensor_registry.h"
 
 #include "logic/eval.h"
 #include "logic/var.h"
 #include "logic/time.h"
 #include "peripherals/display.h"
 #include "peripherals/led.h"
+#include "peripherals/sensors/hdc.h"
+#include "peripherals/sensors/bme680.h"
 
-// ===== Arduino setup/loop =====
+// Global sensor registry instance
+SensorRegistry sensorRegistry;
+
 void setup() {
   Serial.begin(115200);
   while (!Serial);
 
   setupCommandMap();
-
   initLedRGB();
-
   initDisplay();
-
-  Serial.println("Ready. Send lines, then RUN or RUNLOOP. Use STOP to halt.");
+  Wire.begin();
+  
+  Serial.println("senseBoxOS ready");
 }
 
 void loop() {
@@ -34,7 +38,6 @@ void loop() {
     char c = Serial.read();
     if (c == '\n') {
       line.trim();
-      Serial.print("Got line: "); Serial.println(line);
       if (line == "RUN") {
         runningScript = true; runForever = false; runScript();
         runningScript = false;
@@ -44,7 +47,7 @@ void loop() {
         runForever = false; runningScript = false;
         scriptLines.clear();
         variables.clear();
-        Serial.println("Stopped and cleared script & variables.");
+        Serial.println("Stopped");
       } else if (line.length() > 0) {
         scriptLines.push_back(line);
       }

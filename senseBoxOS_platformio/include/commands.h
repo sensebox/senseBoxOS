@@ -6,3 +6,4 @@
 typedef void (*CommandHandler)(String args);
 extern std::map<String, CommandHandler> commandMap;
 void setupCommandMap();
+void handleSensorCommand(String args);
