@@ -1,15 +1,14 @@
 #include "helpers/interpreter.h"
 #include "helpers/block.h"
+#include "helpers/command_parser.h"
+#include "helpers/sensor_registry.h"
 #include "logic/eval.h"
 #include "logic/var.h"
-#include "peripherals/sensors/hdc.h"
-#include "peripherals/sensors/bme680.h"
 #include "commands.h"
 // TODO: including everything here seems suboptimal
 
-// sensor instances
-HDC1000Sensor hdc;
-BME680Sensor bme680;
+// Global sensor registry instance
+extern SensorRegistry sensorRegistry;
 
 std::map<String, float> variables;
 std::vector<String> scriptLines;
@@ -138,13 +137,16 @@ void executeLine(String line, int& pc) {
   } else if (eq != -1) {
     String var = line.substring(0, eq); var.trim();
     String val = line.substring(eq + 1); val.trim();
-    if (val == "readHDC") {
-      setVar(var, hdc.read());
-    }
-    else if (val == "readBME") {
-      setVar(var, bme680.read());
-    }
-    else {
+    
+    if (isSensorCommand(val)) {
+      SensorCommand cmd = parseSensorCommand(val);
+      if (cmd.isValid) {
+        float sensorValue = sensorRegistry.readSensor(cmd.sensorType, cmd.measurement);
+        setVar(var, sensorValue);
+      } else {
+        setVar(var, cmd.errorCode);
+      }
+    } else {
       setVar(var, evalNumber(val));
     }
     return;

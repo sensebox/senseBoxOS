@@ -3,12 +3,17 @@
 #include <Adafruit_HDC1000.h>
 #include "sensor.h"
 
-class HDC1000Sensor : public Sensor {
+class HDC1080Sensor : public BaseSensor {
 public:
-    HDC1000Sensor();
-    float read() override;
-private:
+    HDC1080Sensor();
+    
+    std::vector<String> getSupportedMeasurements() const override;
+    String getSensorType() const override;
+    
+protected:
     bool begin() override;
+    float readMeasurement(const String& measurementType) override;
+    
+private:
     Adafruit_HDC1000 hdc;
-    bool initialized;
 };

@@ -1,9 +1,16 @@
 #include "logic/eval.h"
 #include "helpers/interpreter.h"
+#include "helpers/command_parser.h"
+#include "helpers/sensor_registry.h"
+
+// Global sensor registry instance (declared in main.cpp)
+extern SensorRegistry sensorRegistry;
 
 // Simple arithmetic evaluator: + - * / (left-to-right)
 float evalNumber(String expr) {
   expr.trim();
+  
+  // First check for arithmetic operations
   int opPos = -1; char op = 0;
   for (int i = 1; i < expr.length() - 1; ++i) {
     char c = expr[i];
@@ -16,6 +23,17 @@ float evalNumber(String expr) {
     float r = evalNumber(right);
     switch (op) { case '+': return l+r; case '-': return l-r; case '*': return l*r; case '/': return (r!=0)? l/r : 0; }
   }
+  
+  // Check if it's a sensor command
+  if (isSensorCommand(expr)) {
+    SensorCommand cmd = parseSensorCommand(expr);
+    if (cmd.isValid) {
+      return sensorRegistry.readSensor(cmd.sensorType, cmd.measurement);
+    } else {
+      return cmd.errorCode;
+    }
+  }
+  
   if (variables.count(expr)) return variables[expr];
   return expr.toFloat();
 }

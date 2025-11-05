@@ -13,8 +13,8 @@ Its a ESP32-S2 Pseudocode Interpreter. Currently only serial connection is suppo
 
 ### Example script:
 ```
-temperatureHDC = readHDC
-temperatureBME = readBME
+temperatureHDC = sensor:hdc1080:temperature
+temperatureBME = sensor:bme680:temperature
 if(temperatureHDC > 25) {
   led(255,0,0)
 } 
