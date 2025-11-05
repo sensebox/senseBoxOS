@@ -22,12 +22,23 @@ SensorRegistry sensorRegistry;
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);
 
   setupCommandMap();
   initLedRGB();
   initDisplay();
   Wire.begin();
+
+  // blink LED to show that senseBoxOS is running
+  delay(100);
+  setLedRGB(250, 0, 250);
+  delay(100);
+  setLedRGB(0, 0, 0);
+  delay(100);
+  setLedRGB(250, 0, 250);
+  delay(100);
+  setLedRGB(0, 0, 0);
+
+  while (!Serial);
   
   Serial.println("senseBoxOS ready");
 }
