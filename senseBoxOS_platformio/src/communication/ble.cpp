@@ -1,4 +1,4 @@
-#include "ble.h"
+#include "communication/ble.h"
 
 // ===== BLE UUIDs =====
 static const char* BLE_SERVICE_UUID = "CF06A218F68EE0BEAD048EBC1EB0BC84";
@@ -9,26 +9,25 @@ bool bleSawOpenParen = false;
 uint32_t lastBleByteMs = 0;
 const uint32_t BLE_IDLE_FLUSH_MS = 800;  // idle gap before flushing ANY message 
 
-bool BLE::bleStart() {
+void BLEModule::setup() {
   SenseBoxBLE::start("senseBox-BLE");
-  return true;
 }
 
-bool BLE::bleBegin() {
+bool BLEModule::begin() {
   int rxHandle = SenseBoxBLE::setConfigCharacteristic(BLE_SERVICE_UUID, BLE_RX_UUID);
   if (rxHandle <= 0) Serial.println("BLE: setConfigCharacteristic failed or already set.");
-  SenseBoxBLE::configHandler = BLE::onBleConfigWrite;
+  SenseBoxBLE::configHandler = BLEModule::onBleConfigWrite;
   SenseBoxBLE::setName("senseBoxOS");
   SenseBoxBLE::advertise();
   return true;
 }
 
-void BLE::bleLoop() {
+void BLEModule::loop() {
   SenseBoxBLE::poll();
   bleMaybeFlushByIdle();
 }
 
-void BLE::bleFlush(const char* reason) {
+void BLEModule::bleFlush(const char* reason) {
   String s = bleBuf;
   s.trim();
   if (s.length() == 0) return;
@@ -58,7 +57,7 @@ void BLE::bleFlush(const char* reason) {
   bleSawOpenParen = false;
 }
 
-void BLE::bleMaybeFlushByIdle() {
+void BLEModule::bleMaybeFlushByIdle() {
   if (bleBuf.length() == 0) return;
   if (bleParenDepth > 0)    return; // inside '(...' → wait for ')'
   uint32_t now = millis();
@@ -67,7 +66,7 @@ void BLE::bleMaybeFlushByIdle() {
   }
 }
 
-String BLE::utf16leToString(uint8_t *data, size_t length)
+String BLEModule::utf16leToString(uint8_t *data, size_t length)
 {
     String result = "";
 
@@ -98,12 +97,12 @@ String BLE::utf16leToString(uint8_t *data, size_t length)
     return result;
 }
 
-void BLE::onBleConfigWrite() {
+void BLEModule::onBleConfigWrite() {
   uint8_t raw[64] = {0};
   SenseBoxBLE::read(raw, sizeof(raw));
 
   // Try to decode chunk (handles UTF-16LE & UTF-8)
-  String chunk = BLE::utf16leToString(raw, sizeof(raw));
+  String chunk = BLEModule::utf16leToString(raw, sizeof(raw));
   Serial.printf("[BLE] chunk: \"%s\"\n", chunk.c_str());
 
   // Feed decoded text into assembler

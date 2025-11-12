@@ -1,15 +1,16 @@
+#include "communication/protocol.h"
 #include <SenseBoxBLE.h>
 #include "helpers/interpreter.h"
 
-class BLE {
-public:    
-    BLE() = default;
+class BLEModule: public BaseProtocol {
+public:
+    BLEModule() = default;
     // setup BLE
-    bool bleStart();
+    void setup() override;
     // Initialize BLE services
-    bool bleBegin();
+    bool begin() override;
     // needs to be called regularly to process BLE events
-    void bleLoop();
+    void loop() override;
     
 private:
     // flush helper that prints the completed message

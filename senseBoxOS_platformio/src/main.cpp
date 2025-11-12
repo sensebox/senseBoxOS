@@ -4,7 +4,8 @@
 #include <Wire.h>
 
 #include "commands.h"
-#include "ble.h"
+#include "communication/ble.h"
+#include "communication/serial.h"
 
 #include "helpers/block.h"
 #include "helpers/interpreter.h"
@@ -20,17 +21,18 @@
 
 // Global sensor registry instance
 SensorRegistry sensorRegistry;
-BLE ble;
+BLEModule bleModule;
+SerialModule serialModule;
 
 void setup() {
-  Serial.begin(115200);
+  serialModule.setup();
 
   setupCommandMap();
   initLedRGB();
   initDisplay();
   Wire.begin();
 
-  ble.bleStart();
+  bleModule.setup();
 
   // blink LED to show that senseBoxOS is running
   delay(100);
@@ -42,34 +44,11 @@ void setup() {
   delay(100);
   setLedRGB(0, 0, 0);
 
-  ble.bleBegin();
-  
-  Serial.println("senseBoxOS ready");
+  bleModule.begin();
+  serialModule.begin();
 }
 
 void loop() {
-  ble.bleLoop();
-  if (Serial.available()) {
-    static String line;
-    char c = Serial.read();
-    if (c == '\n') {
-      line.trim();
-      if (line == "RUN") {
-        runningScript = true; runForever = false; runScript();
-        runningScript = false;
-      } else if (line == "RUNLOOP") {
-        runningScript = true; runForever = true;  runScript();
-      } else if (line == "STOP") {
-        runForever = false; runningScript = false;
-        scriptLines.clear();
-        variables.clear();
-        Serial.println("Stopped");
-      } else if (line.length() > 0) {
-        scriptLines.push_back(line);
-      }
-      line = "";
-    } else if (c != '\r') {
-      line += c;
-    }
-  }
+  bleModule.loop();
+  serialModule.loop();
 }
