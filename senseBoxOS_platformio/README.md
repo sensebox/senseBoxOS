@@ -1,5 +1,5 @@
 # senseBoxOS: platformio edition
-Its a ESP32-S2 Pseudocode Interpreter. Currently only serial connection is supported. 
+Its a ESP32-S2 Pseudocode Interpreter. Serial and BLE are supported. 
 - Multiline scripts, control flow, delay(), OLED output, and stoppable RUNLOOP
 - Send lines over Serial, then send RUN (once) or RUNLOOP (repeat) or STOP (to halt)
 - Commands: 
@@ -13,9 +13,9 @@ Its a ESP32-S2 Pseudocode Interpreter. Currently only serial connection is suppo
 
 ### Example script:
 ```
-temperatureHDC = sensor:hdc1080:temperature
-temperatureBME = sensor:bme680:temperature
-if(temperatureHDC > 25) {
+temperatureHDC=sensor:hdc1080:temperature
+temperatureBME=sensor:bme680:temperature
+if(temperatureHDC>25) {
   led(255,0,0)
 } 
 else {
@@ -27,11 +27,12 @@ delay(1000)
 ```
 for-loop example (now brace-aware):
 ```
-i = 0
-for(i = 0; i < 5; i = i + 1) {
-  led(255,0,0)
-  delay(200)
-  led(0,0,0)
-  delay(200)
+for(i=0;i<5;i=i+1) {
+led(255,0,0)
+delay(200)
+led(0,0,0)
+delay(200)
 }
 ```
+
+Long lines have to be divided and send in smaller parts when communicating via BLE.

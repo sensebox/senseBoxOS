@@ -4,6 +4,7 @@
 #include <Wire.h>
 
 #include "commands.h"
+#include "ble.h"
 
 #include "helpers/block.h"
 #include "helpers/interpreter.h"
@@ -19,6 +20,7 @@
 
 // Global sensor registry instance
 SensorRegistry sensorRegistry;
+BLE ble;
 
 void setup() {
   Serial.begin(115200);
@@ -27,6 +29,8 @@ void setup() {
   initLedRGB();
   initDisplay();
   Wire.begin();
+
+  ble.bleStart();
 
   // blink LED to show that senseBoxOS is running
   delay(100);
@@ -38,12 +42,13 @@ void setup() {
   delay(100);
   setLedRGB(0, 0, 0);
 
-  while (!Serial);
+  ble.bleBegin();
   
   Serial.println("senseBoxOS ready");
 }
 
 void loop() {
+  ble.bleLoop();
   if (Serial.available()) {
     static String line;
     char c = Serial.read();
