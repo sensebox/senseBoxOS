@@ -4,7 +4,6 @@
 #include <Wire.h>
 
 #include "commands.h"
-
 #include "helpers/block.h"
 #include "helpers/interpreter.h"
 #include "helpers/sensor_registry.h"
@@ -38,7 +37,7 @@ void setup() {
   delay(100);
   setLedRGB(0, 0, 0);
 
-  while (!Serial);
+  while (!Serial);  
   
   Serial.println("senseBoxOS ready");
 }
@@ -49,7 +48,11 @@ void loop() {
     char c = Serial.read();
     if (c == '\n') {
       line.trim();
-      if (line == "RUN") {
+      if (line == "DISCONNECT") {
+        Serial.println("Disconnect command received. Restarting...");
+        delay(100);
+        ESP.restart();
+    } else if (line == "RUN") {
         runningScript = true; runForever = false; runScript();
         runningScript = false;
       } else if (line == "RUNLOOP") {
