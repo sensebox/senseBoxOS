@@ -1,6 +1,8 @@
 #include "peripherals/sensors/bme680.h"
 #include <Arduino.h>
 
+int BME680Sensor::warmup_timeout_ms = 3000;
+
 // BME680 Sensor Implementation
 bsecSensor BME680Sensor::sensorList[14] = {
   BSEC_OUTPUT_IAQ,
@@ -29,6 +31,26 @@ String BME680Sensor::getSensorType() const {
     return "bme680";
 }
 
+bool BME680Sensor::warmUp(int timeout) {
+    while (timeout > 0) {
+        bme680.run();
+        if (bme680.status == BSEC_OK && bme680.sensor.status == BME68X_OK) {
+            return true;
+        }
+        delay(100);
+        timeout -= 100;
+    }
+    // Check BSEC status for more specific error information
+    if (bme680.status != BSEC_OK) {
+        logError(ERROR_COMMUNICATION_FAILED, "BME680: BSEC error status " + String(bme680.status));
+    } else if (bme680.sensor.status != BME68X_OK) {
+        logError(ERROR_COMMUNICATION_FAILED, "BME680: Sensor error status " + String(bme680.sensor.status));
+    } else {
+        logError(ERROR_SENSOR_READ_FAILED, "BME680: No new data available");
+    }
+    return false;
+}
+
 bool BME680Sensor::begin() {
     bme680.begin(BME68X_I2C_ADDR_LOW, Wire);
     if (bme680.status != BSEC_OK || bme680.sensor.status != BME68X_OK) {
@@ -36,7 +58,12 @@ bool BME680Sensor::begin() {
         return false;
     }
 
-    bme680.updateSubscription(sensorList, ARRAY_LEN(sensorList), 10);
+    bme680.updateSubscription(sensorList, ARRAY_LEN(sensorList), 1);
+    if (!warmUp(warmup_timeout_ms)) {
+        Serial.println("BME680 Sensor warm-up timed out!");
+        return ERROR_SENSOR_READ_FAILED;
+    }
+
     if (bme680.status != BSEC_OK || bme680.sensor.status != BME68X_OK) {
         Serial.println("BME680 Sensor subscription failed!");
         return false;
@@ -46,17 +73,11 @@ bool BME680Sensor::begin() {
     return true;
 }
 
+
+
 float BME680Sensor::readMeasurement(const String& measurementType) {
-    // Check if sensor data is available
-    if (!bme680.run()) {
-        // Check BSEC status for more specific error information
-        if (bme680.status != BSEC_OK) {
-            logError(ERROR_COMMUNICATION_FAILED, "BME680: BSEC error status " + String(bme680.status));
-        } else if (bme680.sensor.status != BME68X_OK) {
-            logError(ERROR_COMMUNICATION_FAILED, "BME680: Sensor error status " + String(bme680.sensor.status));
-        } else {
-            logError(ERROR_SENSOR_READ_FAILED, "BME680: No new data available");
-        }
+    if (!warmUp(warmup_timeout_ms)) {
+        Serial.println("BME680 Sensor warm-up timed out!");
         return ERROR_SENSOR_READ_FAILED;
     }
     
