@@ -22,3 +22,5 @@ private:
     // Handle incoming BLE configuration writes.
     static void onBleConfigWrite();
 };
+
+extern BLEModule bleModule;

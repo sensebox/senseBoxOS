@@ -24,3 +24,5 @@ public:
     // Get supported measurements for a specific sensor
     std::vector<String> getSupportedMeasurements(const String& sensorType) const;
 };
+
+extern SensorRegistry sensorRegistry;

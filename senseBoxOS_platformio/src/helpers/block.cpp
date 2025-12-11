@@ -72,11 +72,12 @@ Block getFollowingBlock(int ctrlIdx) {
 }
 
 void runBlock(int start, int end) {
-  int pc2 = start;
-  while (pc2 < end && runningScript) {
-    String body = scriptLines[pc2]; body.trim();
-    executeLine(body, pc2);
-    pc2++;
-    pumpControl(); if (!runningScript) break;
+  int lineIndex = start;
+  while (lineIndex < end && runningScript) {
+    String body = scriptLines[lineIndex]; body.trim();
+    executeLine(body, lineIndex);
+    lineIndex++;
+    pumpControl(); 
+    if (!runningScript) break;
   }
 }

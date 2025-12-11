@@ -9,3 +9,5 @@ public:
     // needs to be called regularly to process Serial events
     void loop() override;
 };
+
+extern SerialModule serialModule;
