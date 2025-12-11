@@ -15,6 +15,8 @@ protected:
     float readMeasurement(const String& measurementType) override;
     
 private:
-    Bsec2 bme680;
+    static int warmup_timeout_ms;
     static bsecSensor sensorList[14];
+    bool warmUp(int timeout);
+    Bsec2 bme680;
 };
