@@ -21,7 +21,6 @@ void initDisplay() {
 }
 
 void displayNumber(float value) {
-  Serial.print("Display: "); Serial.println(value);
 
   if (!oledInitialized) {
     if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
@@ -45,7 +44,36 @@ void displayNumber(float value) {
   oled.println(value);
   oled.display();
 }
+void displayText(const String& text) {
+  if (!oledInitialized) {
+    if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
+      oledInitialized = true;
+    } else {
+      return;
+    }
+  }
 
-void handleDisplay(String args) { 
-  displayNumber(evalNumber(args)); 
+  oled.clearDisplay();
+  oled.setCursor(0,0);
+  oled.setTextSize(1);
+  oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
+  oled.println(text);
+  oled.display();
+
+}
+
+
+
+void handleDisplay(String args) {
+
+  args.trim();
+  if (args.startsWith("\"") && args.endsWith("\"")) {
+    String inside = args.substring(1, args.length() - 1);
+    displayText(inside);
+    return;
+  }
+
+  // Ansonsten: Zahl evaluieren
+  float num = evalNumber(args);
+  displayNumber(num);
 }

@@ -31,6 +31,8 @@ String BME680Sensor::getSensorType() const {
     return "bme680";
 }
 
+// as an alternative to "warming up" the sensor,
+// we could also attach a callback to sensor, that triggers whenever new data is ready
 bool BME680Sensor::warmUp(int timeout) {
     while (timeout > 0) {
         bme680.run();

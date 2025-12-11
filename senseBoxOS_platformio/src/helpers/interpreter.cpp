@@ -155,6 +155,8 @@ void executeLine(String line, int& pc) {
   }
 
   Serial.println(String("Unknown command: ") + line);
+  runForever = false;
+  runningScript = false;
 }
 
 void runScript() {
