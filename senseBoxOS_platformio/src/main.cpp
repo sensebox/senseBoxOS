@@ -19,11 +19,6 @@
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
 
-// Global sensor registry instance
-SensorRegistry sensorRegistry;
-BLEModule bleModule;
-SerialModule serialModule;
-
 void setup() {
   serialModule.setup();
 

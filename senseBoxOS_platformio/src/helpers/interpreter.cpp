@@ -5,10 +5,9 @@
 #include "logic/eval.h"
 #include "logic/var.h"
 #include "commands.h"
+#include "communication/ble.h"
+#include "communication/serial.h"
 // TODO: including everything here seems suboptimal
-
-// Global sensor registry instance
-extern SensorRegistry sensorRegistry;
 
 std::map<String, float> variables;
 std::vector<String> scriptLines;
@@ -84,9 +83,12 @@ void executeLine(String line, int& pc) {
         String body = scriptLines[innerPc]; body.trim();
         executeLine(body, innerPc);
         innerPc++;
-        pumpControl(); if (!runningScript) break;
+        pumpControl(); 
+        if (!runningScript) break;
       }
-      yield(); pumpControl(); if (!runningScript) break;
+      yield(); 
+      pumpControl(); 
+      if (!runningScript) break;
     }
     while (++pc < (int)scriptLines.size()) {
       String next = scriptLines[pc]; next.trim();
@@ -171,29 +173,7 @@ void runScript() {
 }
 
 // Read control commands while script is running (so STOP works in RUNLOOP)
-bool pumpControl() {
-  static String buf;
-  bool acted = false;
-  while (Serial.available()) {
-    char c = Serial.read();
-    if (c == '\n') {
-      buf.trim();
-      if (buf == "STOP") {
-        runForever    = false;
-        runningScript = false;
-        scriptLines.clear();
-        variables.clear();
-        Serial.println("Stopping script (STOP received). Cleared script and variables.");
-        acted = true;
-      } else if (buf == "RUN" || buf == "RUNLOOP") {
-        // ignore during execution
-      } else if (buf.length() > 0) {
-        Serial.println("(ignored while running)");
-      }
-      buf = "";
-    } else if (c != '\r') {
-      buf += c;
-    }
-  }
-  return acted;
+void pumpControl() {
+  bleModule.loop();
+  serialModule.loop();
 }

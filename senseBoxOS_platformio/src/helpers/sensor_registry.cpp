@@ -3,6 +3,8 @@
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
 
+SensorRegistry sensorRegistry;
+
 float SensorRegistry::readSensor(const String& sensorType, const String& measurement) {
     // Initialize sensor on-demand
     auto it = sensors.find(sensorType);

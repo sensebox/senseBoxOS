@@ -1,5 +1,7 @@
 #include "communication/ble.h"
 
+BLEModule bleModule;
+
 // ===== BLE UUIDs =====
 static const char* BLE_SERVICE_UUID = "CF06A218F68EE0BEAD048EBC1EB0BC84";
 static const char* BLE_RX_UUID      = "2CDF217435BEFDC44CA26FD173F8B3A8";
@@ -34,16 +36,28 @@ void BLEModule::bleFlush(const char* reason) {
   Serial.printf("[BLE] FULL (%s): \"%s\"\n", reason, s.c_str());
 
   // Case-insensitive control words
-  String up = s; up.toUpperCase();
-  if      (up == "RUN") {
-    runningScript = true; runForever = false; runScript();
+  String up = s; 
+  up.toUpperCase();
+
+  // clear buffer, so that its ready for a new command
+  bleBuf = "";
+  bleParenDepth = 0;
+  bleSawOpenParen = false;
+
+  if (up == "RUN") {
+    runningScript = true; 
+    runForever = false; 
+    runScript();
     runningScript = false;
   }
   else if (up == "RUNLOOP") {
-    runningScript = true; runForever = true;  runScript();
+    runningScript = true; 
+    runForever = true;  
+    runScript();
   }
   else if (up == "STOP") {
-    runForever = false; runningScript = false;
+    runForever = false; 
+    runningScript = false;
     scriptLines.clear();
     variables.clear();
     Serial.println("Stopped");
@@ -51,10 +65,6 @@ void BLEModule::bleFlush(const char* reason) {
   else {
     scriptLines.push_back(s);
   }
-
-  bleBuf = "";
-  bleParenDepth = 0;
-  bleSawOpenParen = false;
 }
 
 void BLEModule::bleMaybeFlushByIdle() {

@@ -13,4 +13,4 @@ extern SensorRegistry sensorRegistry;
 
 void executeLine(String line, int& pc);
 void runScript();
-bool pumpControl();
+void pumpControl();
