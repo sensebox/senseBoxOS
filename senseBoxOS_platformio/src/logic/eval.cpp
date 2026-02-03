@@ -38,9 +38,14 @@ float evalNumber(String expr) {
   return expr.toFloat();
 }
 
-// Boolean condition evaluator: >, <, >=, <=, ==, !=
 bool evalCond(String cond) {
   cond.trim();
+
+  // echte Booleans
+  if (cond == "true")  return true;
+  if (cond == "false") return false;
+
+  // Vergleiche
   const char* ops[] = {">=","<=","==","!=",">","<"};
   for (int i = 0; i < 6; i++) {
     String op = ops[i];
@@ -57,5 +62,17 @@ bool evalCond(String cond) {
       else if (op == "<")  return l <  r;
     }
   }
+
+  // 🔥 STRING-TRUTHINESS
+  if (
+    (cond.startsWith("\"") && cond.endsWith("\"")) ||
+    (cond.startsWith("'")  && cond.endsWith("'"))
+  ) {
+    String s = cond.substring(1, cond.length() - 1);
+    s.trim();
+    return s.length() > 0;
+  }
+
+  // Zahl / Variable
   return evalNumber(cond) != 0;
 }

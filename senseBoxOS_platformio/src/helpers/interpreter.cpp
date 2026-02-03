@@ -15,6 +15,9 @@ std::vector<String> scriptLines;
 bool runningScript = false;
 bool runForever = false;   // RUNLOOP mode
 
+// Forward declaration for BLE polling (defined in main.cpp)
+extern void pollBle();
+
 void executeLine(String line, int& pc) {
   line.trim();
   if (line.length()==0) return;
@@ -176,6 +179,8 @@ void runScript() {
 bool pumpControl() {
   static String buf;
   bool acted = false;
+  
+  // Handle USB Serial input
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\n') {
@@ -197,5 +202,9 @@ bool pumpControl() {
       buf += c;
     }
   }
+  
+  // Poll BLE for incoming data
+  pollBle();
+  
   return acted;
 }
