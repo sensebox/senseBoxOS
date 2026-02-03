@@ -113,17 +113,29 @@ void BLEModule::onBleConfigWrite() {
 
   // Try to decode chunk (handles UTF-16LE & UTF-8)
   String chunk = BLEModule::utf16leToString(raw, sizeof(raw));
-  Serial.printf("[BLE] chunk: \"%s\"\n", chunk.c_str());
+  
+  // Show chunk with visible control characters
+  Serial.print("[BLE] chunk (hex): ");
+  for (size_t i = 0; i < chunk.length(); i++) {
+    Serial.printf("%02X ", (unsigned char)chunk[i]);
+  }
+  Serial.println();
+  Serial.printf("[BLE] chunk (string): \"%s\" (length: %d)\n", chunk.c_str(), chunk.length());
 
   // Feed decoded text into assembler
   for (size_t i = 0; i < (size_t)chunk.length(); ++i) {
     char c = chunk[i];
+    Serial.printf("[BLE] Processing char[%d]: 0x%02X '%c'\n", i, (unsigned char)c, (c >= 32 && c < 127) ? c : '?');
 
-    // ❗ Ignore CR/LF completely — some apps send them after every keystroke
-    if (c == '\r' || c == '\n' || c == '\0') continue;
+    // ❗ Ignore all control characters (ASCII 0-31) — some apps send them
+    if (c >= 0 && c < 32) {
+      Serial.printf("[BLE] -> Skipping control character\n");
+      continue;
+    }
 
     // Accumulate
     bleBuf += c;
+    Serial.printf("[BLE] -> Buffer now: \"%s\"\n", bleBuf.c_str());
 
     // Track parentheses to detect completion of calls like led(...)
     if (c == '(') { bleParenDepth++; bleSawOpenParen = true; }
@@ -135,5 +147,18 @@ void BLEModule::onBleConfigWrite() {
     }
   }
 
+  Serial.printf("[BLE] After chunk processing, buffer: \"%s\"\n", bleBuf.c_str());
+
+  // After processing chunk, check if buffer contains a control word
+  if (bleParenDepth == 0 && !bleSawOpenParen && bleBuf.length() > 0) {
+    String tmp = bleBuf;
+    tmp.trim();
+    String up = tmp;
+    up.toUpperCase();
+    if (up == "RUN" || up == "RUNLOOP" || up == "STOP") {
+      Serial.printf("[BLE] Control word detected: %s\n", up.c_str());
+      bleFlush("control");
+    }
+  }
   lastBleByteMs = millis(); // update “last seen” time for idle flush
 }

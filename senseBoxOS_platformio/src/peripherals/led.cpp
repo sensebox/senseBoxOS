@@ -28,6 +28,6 @@ void handleLed(String args) {
     args.toLowerCase();
     if (args == "on") setLedRGB(255, 0, 0);
     else if (args == "off") setLedRGB(0, 0, 0);
-    else Serial.println("LED expects 'on', 'off' or 'r,g,b'");
+    else;
   }
 }
