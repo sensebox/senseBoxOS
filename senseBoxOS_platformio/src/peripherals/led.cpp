@@ -12,7 +12,6 @@ void initLedRGB() {
 void setLedRGB(int r, int g, int b) {
   rgb_led_1.setPixelColor(0, rgb_led_1.Color(r, g, b));
   rgb_led_1.show();
-  Serial.printf("LED RGB set to (%d,%d,%d)\n", r, g, b);
 }
 
 void handleLed(String args) {
