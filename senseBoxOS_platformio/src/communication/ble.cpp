@@ -123,6 +123,7 @@ void BLEModule::onBleConfigWrite() {
   Serial.printf("[BLE] chunk (string): \"%s\" (length: %d)\n", chunk.c_str(), chunk.length());
 
   // Feed decoded text into assembler
+  bool justFlushed = false;
   for (size_t i = 0; i < (size_t)chunk.length(); ++i) {
     char c = chunk[i];
     Serial.printf("[BLE] Processing char[%d]: 0x%02X '%c'\n", i, (unsigned char)c, (c >= 32 && c < 127) ? c : '?');
@@ -132,6 +133,13 @@ void BLEModule::onBleConfigWrite() {
       Serial.printf("[BLE] -> Skipping control character\n");
       continue;
     }
+
+    // After a flush, ignore trailing whitespace and extra closing parens
+    if (justFlushed && (c == ' ' || c == ')')) {
+      Serial.printf("[BLE] -> Skipping trailing char after flush\n");
+      continue;
+    }
+    justFlushed = false;
 
     // Accumulate
     bleBuf += c;
@@ -144,6 +152,7 @@ void BLEModule::onBleConfigWrite() {
     // IMMEDIATE flush when a function call closes cleanly
     if (c == ')' && bleParenDepth == 0 && bleSawOpenParen) {
       bleFlush("paren");
+      justFlushed = true;
     }
   }
 
