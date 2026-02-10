@@ -20,6 +20,14 @@ void SerialModule::loop() {
             line.trim();
             if (line == "RUN") {
                 line = "";
+                if (runningScript) {
+                    Serial.println("[Serial] Script already running, stopping current script first...");
+                    runningScript = false;
+                    runForever = false;
+                    delay(100); // Brief delay to allow current iteration to finish
+                    scriptLines.clear();
+                    variables.clear();
+                }
                 Serial.println("========== EXECUTING SCRIPT ==========");
                 Serial.printf("Script has %d lines:\n", scriptLines.size());
                 for (int i = 0; i < scriptLines.size(); i++) {
@@ -32,6 +40,14 @@ void SerialModule::loop() {
                 runningScript = false;
             } else if (line == "RUNLOOP") {
                 line = "";
+                if (runningScript) {
+                    Serial.println("[Serial] Script already running, stopping current script first...");
+                    runningScript = false;
+                    runForever = false;
+                    delay(100); // Brief delay to allow current iteration to finish
+                    scriptLines.clear();
+                    variables.clear();
+                }
                 Serial.println("========== EXECUTING SCRIPT (LOOP) ==========");
                 Serial.printf("Script has %d lines:\n", scriptLines.size());
                 for (int i = 0; i < scriptLines.size(); i++) {
@@ -49,8 +65,14 @@ void SerialModule::loop() {
                 variables.clear();
                 Serial.println("Stopped");
             } else if (line.length() > 0) {
-                scriptLines.push_back(line);
-                line = "";
+                // Ignore new script lines while a script is running
+                if (runningScript) {
+                    Serial.printf("[Serial] Ignoring line while script is running: \"%s\"\n", line.c_str());
+                    line = "";
+                } else {
+                    scriptLines.push_back(line);
+                    line = "";
+                }
             }
         } else if (c != '\r') {
             line += c;

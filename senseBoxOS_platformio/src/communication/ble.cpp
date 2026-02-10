@@ -60,6 +60,14 @@ void BLEModule::bleFlush(const char* reason) {
   bleSawOpenBrace = false;
 
   if (up == "RUN") {
+    if (runningScript) {
+      Serial.println("[BLE] Script already running, stopping current script first...");
+      runningScript = false;
+      runForever = false;
+      delay(100); // Brief delay to allow current iteration to finish
+      scriptLines.clear();
+      variables.clear();
+    }
     Serial.println("========== EXECUTING SCRIPT ==========");
     Serial.printf("Script has %d lines:\n", scriptLines.size());
     for (int i = 0; i < scriptLines.size(); i++) {
@@ -72,6 +80,14 @@ void BLEModule::bleFlush(const char* reason) {
     runningScript = false;
   }
   else if (up == "RUNLOOP") {
+    if (runningScript) {
+      Serial.println("[BLE] Script already running, stopping current script first...");
+      runningScript = false;
+      runForever = false;
+      delay(100); // Brief delay to allow current iteration to finish
+      scriptLines.clear();
+      variables.clear();
+    }
     Serial.println("========== EXECUTING SCRIPT (LOOP) ==========");
     Serial.printf("Script has %d lines:\n", scriptLines.size());
     for (int i = 0; i < scriptLines.size(); i++) {
@@ -90,6 +106,12 @@ void BLEModule::bleFlush(const char* reason) {
     Serial.println("Stopped");
   }
   else {
+    // Ignore new script lines while a script is running to prevent corruption
+    if (runningScript) {
+      Serial.printf("[BLE] Ignoring line while script is running: \"%s\"\n", s.c_str());
+      return;
+    }
+    
     // Split line at braces and commands to match expected interpreter format
     // e.g. "if(x){led(1,2,3)delay(100)}else{led(4,5,6)}" becomes multiple lines
     String remaining = s;
