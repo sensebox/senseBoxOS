@@ -276,6 +276,7 @@ void BLEModule::onBleConfigWrite() {
 
     // Accumulate
     bleBuf += c;
+    bleBuf.trim(); // Remove trailing whitespaces
     Serial.printf("[BLE] -> Buffer now: \"%s\"\n", bleBuf.c_str());
 
     // Track parentheses and braces to detect completion
