@@ -7,9 +7,22 @@ static const char* BLE_SERVICE_UUID = "CF06A218F68EE0BEAD048EBC1EB0BC84";
 static const char* BLE_RX_UUID      = "2CDF217435BEFDC44CA26FD173F8B3A8";
 String bleBuf; 
 int  bleParenDepth = 0;
+int  bleBraceDepth = 0;
 bool bleSawOpenParen = false;
+bool bleSawOpenBrace = false;
 uint32_t lastBleByteMs = 0;
 const uint32_t BLE_IDLE_FLUSH_MS = 800;  // idle gap before flushing ANY message 
+
+// Helper to clean line from input artifacts like leading <> chars
+static String cleanLine(String line) {
+  line.trim();
+  // Remove leading < or > followed by space (likely encoding artifacts from some BLE apps)
+  while (line.length() > 1 && (line[0] == '<' || line[0] == '>') && line[1] == ' ') {
+    line = line.substring(2);
+    line.trim();
+  }
+  return line;
+}
 
 void BLEModule::setup() {
   SenseBoxBLE::start("senseBox-BLE");
@@ -42,15 +55,29 @@ void BLEModule::bleFlush(const char* reason) {
   // clear buffer, so that its ready for a new command
   bleBuf = "";
   bleParenDepth = 0;
+  bleBraceDepth = 0;
   bleSawOpenParen = false;
+  bleSawOpenBrace = false;
 
   if (up == "RUN") {
+    Serial.println("========== EXECUTING SCRIPT ==========");
+    Serial.printf("Script has %d lines:\n", scriptLines.size());
+    for (int i = 0; i < scriptLines.size(); i++) {
+      Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
+    }
+    Serial.println("======================================");
     runningScript = true; 
     runForever = false; 
     runScript();
     runningScript = false;
   }
   else if (up == "RUNLOOP") {
+    Serial.println("========== EXECUTING SCRIPT (LOOP) ==========");
+    Serial.printf("Script has %d lines:\n", scriptLines.size());
+    for (int i = 0; i < scriptLines.size(); i++) {
+      Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
+    }
+    Serial.println("=============================================");
     runningScript = true; 
     runForever = true;  
     runScript();
@@ -63,13 +90,75 @@ void BLEModule::bleFlush(const char* reason) {
     Serial.println("Stopped");
   }
   else {
-    scriptLines.push_back(s);
+    // Split line at braces and commands to match expected interpreter format
+    // e.g. "if(x){led(1,2,3)delay(100)}else{led(4,5,6)}" becomes multiple lines
+    String remaining = s;
+    int braceDepth = 0;
+    int parenDepth = 0;
+    String currentLine = "";
+    
+    for (int i = 0; i < remaining.length(); i++) {
+      char c = remaining[i];
+      
+      if (c == '(') {
+        parenDepth++;
+        currentLine += c;
+      }
+      else if (c == ')') {
+        parenDepth--;
+        currentLine += c;
+        
+        // If we're inside braces and parens are balanced, end of a command
+        if (braceDepth > 0 && parenDepth == 0) {
+          String line = cleanLine(currentLine);
+          if (line.length() > 0) {
+            scriptLines.push_back(line);
+            Serial.printf("[BLE] Added line: \"%s\"\n", line.c_str());
+          }
+          currentLine = "";
+        }
+      }
+      else if (c == '{') {
+        currentLine += c;
+        braceDepth++;
+        // Flush line with opening brace
+        String line = cleanLine(currentLine);
+        if (line.length() > 0) {
+          scriptLines.push_back(line);
+          Serial.printf("[BLE] Added line: \"%s\"\n", line.c_str());
+        }
+        currentLine = "";
+      }
+      else if (c == '}') {
+        braceDepth--;
+        // Flush any content before closing brace
+        String line = cleanLine(currentLine);
+        if (line.length() > 0) {
+          scriptLines.push_back(line);
+          Serial.printf("[BLE] Added line: \"%s\"\n", line.c_str());
+        }
+        scriptLines.push_back("}");
+        Serial.printf("[BLE] Added line: \"}\"\n");
+        currentLine = "";
+      }
+      else {
+        currentLine += c;
+      }
+    }
+    
+    // Add any remaining content
+    String line = cleanLine(currentLine);
+    if (line.length() > 0) {
+      scriptLines.push_back(line);
+      Serial.printf("[BLE] Added line: \"%s\"\n", line.c_str());
+    }
   }
 }
 
 void BLEModule::bleMaybeFlushByIdle() {
   if (bleBuf.length() == 0) return;
   if (bleParenDepth > 0)    return; // inside '(...' → wait for ')'
+  if (bleBraceDepth > 0)    return; // inside '{...' → wait for '}'
   uint32_t now = millis();
   if (now - lastBleByteMs >= BLE_IDLE_FLUSH_MS) {
     bleFlush("idle");
@@ -141,33 +230,107 @@ void BLEModule::onBleConfigWrite() {
     }
     justFlushed = false;
 
+    // Check if a keyword is starting after the last space
+    // If so, flush what we have before the space
+    if (bleBuf.length() > 0 && bleParenDepth == 0 && bleBraceDepth == 0) {
+      int lastSpace = bleBuf.lastIndexOf(' ');
+      if (lastSpace >= 0) {
+        String afterSpace = bleBuf.substring(lastSpace + 1) + c;
+        // Check if this forms the beginning of a keyword
+        if (afterSpace == "f" || afterSpace == "fo" || afterSpace == "for" || 
+            afterSpace == "i" || afterSpace == "if" || 
+            afterSpace == "w" || afterSpace == "wh" || afterSpace == "whi" || afterSpace == "whil" || afterSpace == "while" || 
+            afterSpace == "e" || afterSpace == "el" || afterSpace == "els" || afterSpace == "else") {
+          // Keyword is forming after space, flush everything up to the space
+          Serial.printf("[BLE] Keyword '%s' forming after space, flushing buffer first\n", afterSpace.c_str());
+          String beforeSpace = bleBuf.substring(0, lastSpace);
+          bleBuf = beforeSpace;
+          bleFlush("pre-keyword");
+          bleBuf = "";  // Clear for the new keyword
+          justFlushed = true;
+        }
+      }
+    }
+
     // Accumulate
     bleBuf += c;
     Serial.printf("[BLE] -> Buffer now: \"%s\"\n", bleBuf.c_str());
 
-    // Track parentheses to detect completion of calls like led(...)
+    // Track parentheses and braces to detect completion
     if (c == '(') { bleParenDepth++; bleSawOpenParen = true; }
     else if (c == ')') { if (bleParenDepth > 0) bleParenDepth--; }
+    if (c == '{') { bleBraceDepth++; bleSawOpenBrace = true; }
+    else if (c == '}') { if (bleBraceDepth > 0) bleBraceDepth--; }
 
-    // IMMEDIATE flush when a function call closes cleanly
-    if (c == ')' && bleParenDepth == 0 && bleSawOpenParen) {
+    // Check if buffer starts with a control structure keyword
+    bool isControlStructure = false;
+    if (bleBuf.length() >= 2) {
+      String bufTrimmed = bleBuf;
+      bufTrimmed.trim();
+      if (bufTrimmed.startsWith("if(") || 
+          bufTrimmed.startsWith("while(") || 
+          bufTrimmed.startsWith("for(") ||
+          bufTrimmed.startsWith("else")) {
+        isControlStructure = true;
+      }
+    }
+
+    // IMMEDIATE flush when closing paren, but ONLY if:
+    // - Not a control structure (if/while/for expect braces)
+    // - No braces are currently open or expected
+    if (c == ')' && bleParenDepth == 0 && bleSawOpenParen && 
+        bleBraceDepth == 0 && !bleSawOpenBrace && !isControlStructure) {
       bleFlush("paren");
       justFlushed = true;
+    }
+    
+    // Flush when closing brace and everything is closed
+    if (c == '}' && bleBraceDepth == 0 && bleSawOpenBrace && bleParenDepth == 0) {
+      bleFlush("brace");
+      justFlushed = true;
+    }
+
+    // Check if buffer ends with a control word (only if not inside parens/braces)
+    if (bleParenDepth == 0 && bleBraceDepth == 0 && bleBuf.length() >= 3) {
+      // Get uppercase version to check for control words
+      String bufUpper = bleBuf;
+      bufUpper.toUpperCase();
+      
+      String controlWord = "";
+      int controlWordLen = 0;
+      
+      if (bufUpper.endsWith("RUN")) {
+        controlWord = "RUN";
+        controlWordLen = 3;
+      } else if (bufUpper.endsWith("RUNLOOP")) {
+        controlWord = "RUNLOOP";
+        controlWordLen = 7;
+      } else if (bufUpper.endsWith("STOP")) {
+        controlWord = "STOP";
+        controlWordLen = 4;
+      }
+      
+      if (controlWordLen > 0) {
+        Serial.printf("[BLE] Control word '%s' detected at end of buffer\n", controlWord.c_str());
+        
+        // Extract everything before the control word
+        String beforeControl = bleBuf.substring(0, bleBuf.length() - controlWordLen);
+        beforeControl.trim();
+        
+        // Add what was before to script if not empty
+        if (beforeControl.length() > 0) {
+          Serial.printf("[BLE] Adding to script before control: \"%s\"\n", beforeControl.c_str());
+          scriptLines.push_back(beforeControl);
+        }
+        
+        // Now flush with just the control word
+        bleBuf = controlWord;
+        bleFlush("control");
+        justFlushed = true;
+      }
     }
   }
 
   Serial.printf("[BLE] After chunk processing, buffer: \"%s\"\n", bleBuf.c_str());
-
-  // After processing chunk, check if buffer contains a control word
-  if (bleParenDepth == 0 && !bleSawOpenParen && bleBuf.length() > 0) {
-    String tmp = bleBuf;
-    tmp.trim();
-    String up = tmp;
-    up.toUpperCase();
-    if (up == "RUN" || up == "RUNLOOP" || up == "STOP") {
-      Serial.printf("[BLE] Control word detected: %s\n", up.c_str());
-      bleFlush("control");
-    }
-  }
   lastBleByteMs = millis(); // update “last seen” time for idle flush
 }
