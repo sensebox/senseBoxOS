@@ -20,12 +20,24 @@ void SerialModule::loop() {
             line.trim();
             if (line == "RUN") {
                 line = "";
+                Serial.println("========== EXECUTING SCRIPT ==========");
+                Serial.printf("Script has %d lines:\n", scriptLines.size());
+                for (int i = 0; i < scriptLines.size(); i++) {
+                    Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
+                }
+                Serial.println("======================================");
                 runningScript = true; 
                 runForever = false; 
                 runScript();
                 runningScript = false;
             } else if (line == "RUNLOOP") {
                 line = "";
+                Serial.println("========== EXECUTING SCRIPT (LOOP) ==========");
+                Serial.printf("Script has %d lines:\n", scriptLines.size());
+                for (int i = 0; i < scriptLines.size(); i++) {
+                    Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
+                }
+                Serial.println("=============================================");
                 runningScript = true; 
                 runForever = true;
                 runScript();
