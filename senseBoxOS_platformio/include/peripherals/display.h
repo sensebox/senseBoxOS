@@ -12,3 +12,9 @@ extern bool oledInitialized;
 void initDisplay();
 void  displayNumber(float value);
 void handleDisplay(String args);
+void displayText(const String& text);
+String getDeviceID();
+void displayDeviceID();
+
+// Global device ID
+extern String deviceID;
