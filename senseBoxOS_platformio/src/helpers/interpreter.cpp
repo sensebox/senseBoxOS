@@ -12,7 +12,7 @@
 std::map<String, float> variables;
 std::vector<String> scriptLines;
 bool runningScript = false;
-bool runForever = false;   // RUNLOOP mode
+bool runForever = false;   // LOOP mode
 
 void executeLine(String line, int& pc) {
   line.trim();
@@ -174,7 +174,7 @@ void runScript() {
   } while (runForever && runningScript);
 }
 
-// Read control commands while script is running (so STOP works in RUNLOOP)
+// Read control commands while script is running (so STOP works in LOOP)
 void pumpControl() {
   bleModule.loop();
   serialModule.loop();

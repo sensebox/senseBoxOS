@@ -38,7 +38,7 @@ void SerialModule::loop() {
                 runForever = false; 
                 runScript();
                 runningScript = false;
-            } else if (line == "RUNLOOP") {
+            } else if (line == "LOOP") {
                 line = "";
                 if (runningScript) {
                     Serial.println("[Serial] Script already running, stopping current script first...");

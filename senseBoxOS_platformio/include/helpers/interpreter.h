@@ -8,7 +8,7 @@
 extern std::map<String, float> variables;
 extern std::vector<String> scriptLines;
 extern bool runningScript;
-extern bool runForever;   // RUNLOOP mode
+extern bool runForever;   // LOOP mode
 extern SensorRegistry sensorRegistry;
 
 void executeLine(String line, int& pc);

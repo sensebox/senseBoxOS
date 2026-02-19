@@ -1,7 +1,7 @@
 # senseBoxOS: platformio edition
 Its a ESP32-S2 Pseudocode Interpreter. Serial and BLE are supported. 
-- Multiline scripts, control flow, delay(), OLED output, and stoppable RUNLOOP
-- Send lines over Serial, then send RUN (once) or RUNLOOP (repeat) or STOP (to halt)
+- Multiline scripts, control flow, delay(), OLED output, and stoppable LOOP
+- Send lines over Serial, then send RUN (once) or LOOP (repeat) or STOP (to halt)
 - Commands: 
     - `display(expr)`
     - `led(on|off|r,g,b)`
