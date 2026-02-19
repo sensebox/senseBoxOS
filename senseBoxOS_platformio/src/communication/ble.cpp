@@ -1,4 +1,5 @@
 #include "communication/ble.h"
+#include "peripherals/display.h"
 
 BLEModule bleModule;
 
@@ -11,9 +12,30 @@ int  bleBraceDepth = 0;
 bool bleSawOpenParen = false;
 bool bleSawOpenBrace = false;
 uint32_t lastBleByteMs = 0;
-const uint32_t BLE_IDLE_FLUSH_MS = 800;  // idle gap before flushing ANY message 
+const uint32_t BLE_IDLE_FLUSH_MS = 800;  // idle gap before flushing ANY message
 
-// Helper to clean line from input artifacts like leading <> chars
+// Connection state tracking
+static bool bleConnected = false;
+static uint32_t lastActivityMs = 0;
+const uint32_t BLE_DISCONNECT_TIMEOUT_MS = 5000;  // 5 seconds without activity = disconnected 
+
+// List of known command prefixes
+static const char* knownCommands[] = {
+  "led(", "delay(", "display(", "if(", "while(", "for(", "else", "}", 
+  "sensor:", "buttonPressed(", NULL
+};
+
+// Check if string starts with a known command
+static bool startsWithKnownCommand(const String& line) {
+  for (int i = 0; knownCommands[i] != NULL; i++) {
+    if (line.startsWith(knownCommands[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Helper to clean line from input artifacts like leading <> chars and garbage before commands
 static String cleanLine(String line) {
   line.trim();
   // Remove leading < or > followed by space (likely encoding artifacts from some BLE apps)
@@ -21,18 +43,48 @@ static String cleanLine(String line) {
     line = line.substring(2);
     line.trim();
   }
+  
+  // Fix for BLE garbage before commands: if line starts with 1-2 garbage chars 
+  // followed by a known command, strip the garbage
+  if (line.length() > 2 && !startsWithKnownCommand(line)) {
+    // Try stripping 1 character
+    String stripped1 = line.substring(1);
+    if (startsWithKnownCommand(stripped1)) {
+      Serial.printf("[BLE] Stripped garbage char '%c' from line\n", line[0]);
+      return stripped1;
+    }
+    // Try stripping 2 characters
+    if (line.length() > 3) {
+      String stripped2 = line.substring(2);
+      if (startsWithKnownCommand(stripped2)) {
+        Serial.printf("[BLE] Stripped garbage chars '%s' from line\n", line.substring(0, 2).c_str());
+        return stripped2;
+      }
+    }
+  }
+  
   return line;
 }
 
 void BLEModule::setup() {
   SenseBoxBLE::start("senseBox-BLE");
+  delay(500);  // Wait for BLE to initialize
 }
 
 bool BLEModule::begin() {
+  return begin(deviceID);
+}
+
+bool BLEModule::begin(String deviceId) {
   int rxHandle = SenseBoxBLE::setConfigCharacteristic(BLE_SERVICE_UUID, BLE_RX_UUID);
   if (rxHandle <= 0) Serial.println("BLE: setConfigCharacteristic failed or already set.");
   SenseBoxBLE::configHandler = BLEModule::onBleConfigWrite;
-  SenseBoxBLE::setName("senseBoxOS");
+  
+  // Use provided device ID as BLE name
+  String deviceName = "senseBox-" + deviceId;
+  SenseBoxBLE::setName(deviceName);
+  Serial.printf("BLE device name: %s\n", deviceName.c_str());
+  
   SenseBoxBLE::advertise();
   return true;
 }
@@ -40,6 +92,7 @@ bool BLEModule::begin() {
 void BLEModule::loop() {
   SenseBoxBLE::poll();
   bleMaybeFlushByIdle();
+  checkConnectionState();
 }
 
 void BLEModule::bleFlush(const char* reason) {
@@ -47,6 +100,9 @@ void BLEModule::bleFlush(const char* reason) {
   s.trim();
   if (s.length() == 0) return;
   Serial.printf("[BLE] FULL (%s): \"%s\"\n", reason, s.c_str());
+  
+  // Mark activity for connection tracking (already marked in onBleConfigWrite)
+  lastActivityMs = millis();
 
   // Case-insensitive control words
   String up = s; 
@@ -68,6 +124,13 @@ void BLEModule::bleFlush(const char* reason) {
       scriptLines.clear();
       variables.clear();
     }
+    
+    // Don't start if no script lines (prevents starting with empty script after stop)
+    if (scriptLines.size() == 0) {
+      Serial.println("[BLE] Ignoring RUN - no script lines available");
+      return;
+    }
+    
     Serial.println("========== EXECUTING SCRIPT ==========");
     Serial.printf("Script has %d lines:\n", scriptLines.size());
     for (int i = 0; i < scriptLines.size(); i++) {
@@ -79,7 +142,7 @@ void BLEModule::bleFlush(const char* reason) {
     runScript();
     runningScript = false;
   }
-  else if (up == "RUNLOOP") {
+  else if (up == "LOOP") {
     if (runningScript) {
       Serial.println("[BLE] Script already running, stopping current script first...");
       runningScript = false;
@@ -88,6 +151,13 @@ void BLEModule::bleFlush(const char* reason) {
       scriptLines.clear();
       variables.clear();
     }
+    
+    // Don't start if no script lines (prevents starting with empty script after stop)
+    if (scriptLines.size() == 0) {
+      Serial.println("[BLE] Ignoring LOOP - no script lines available");
+      return;
+    }
+    
     Serial.println("========== EXECUTING SCRIPT (LOOP) ==========");
     Serial.printf("Script has %d lines:\n", scriptLines.size());
     for (int i = 0; i < scriptLines.size(); i++) {
@@ -115,12 +185,23 @@ void BLEModule::bleFlush(const char* reason) {
     // Split line at braces and commands to match expected interpreter format
     // e.g. "if(x){led(1,2,3)delay(100)}else{led(4,5,6)}" becomes multiple lines
     String remaining = s;
+    
+    // Debug: print hex dump of remaining to see if there are hidden characters
+    Serial.print("[BLE] Parsing hex: ");
+    for (int i = 0; i < remaining.length(); i++) {
+      Serial.printf("%02X ", (unsigned char)remaining[i]);
+    }
+    Serial.println();
+    
     int braceDepth = 0;
     int parenDepth = 0;
     String currentLine = "";
     
     for (int i = 0; i < remaining.length(); i++) {
       char c = remaining[i];
+      Serial.printf("[BLE] Parse[%d]='%c'(0x%02X) depth=%d/%d line='%s'\n", 
+                    i, (c >= 32 && c < 127) ? c : '?', (unsigned char)c, 
+                    parenDepth, braceDepth, currentLine.c_str());
       
       if (c == '(') {
         parenDepth++;
@@ -145,11 +226,13 @@ void BLEModule::bleFlush(const char* reason) {
         braceDepth++;
         // Flush line with opening brace
         String line = cleanLine(currentLine);
+        Serial.printf("[BLE] After '{': currentLine='%s', flushing\n", currentLine.c_str());
         if (line.length() > 0) {
           scriptLines.push_back(line);
           Serial.printf("[BLE] Added line: \"%s\"\n", line.c_str());
         }
         currentLine = "";
+        Serial.printf("[BLE] After '{' reset: currentLine='%s'\n", currentLine.c_str());
       }
       else if (c == '}') {
         braceDepth--;
@@ -218,9 +301,28 @@ String BLEModule::utf16leToString(uint8_t *data, size_t length)
     return result;
 }
 
+void BLEModule::checkConnectionState() {
+  // Connection state is now only managed by actual data reception
+  // Once connected, the device stays connected (no idle timeout)
+  // The welcome screen will only show again on device reboot
+}
+
 void BLEModule::onBleConfigWrite() {
   uint8_t raw[64] = {0};
   SenseBoxBLE::read(raw, sizeof(raw));
+
+  // Mark activity for connection tracking
+  lastActivityMs = millis();
+  
+  // First connection - clear display immediately on first data
+  if (!bleConnected) {
+    bleConnected = true;
+    if (oledInitialized) {
+      oled.clearDisplay();
+      oled.display();
+    }
+    Serial.println("[BLE] Device connected - display cleared");
+  }
 
   // Try to decode chunk (handles UTF-16LE & UTF-8)
   String chunk = BLEModule::utf16leToString(raw, sizeof(raw));
@@ -325,9 +427,9 @@ void BLEModule::onBleConfigWrite() {
       if (bufUpper.endsWith("RUN")) {
         controlWord = "RUN";
         controlWordLen = 3;
-      } else if (bufUpper.endsWith("RUNLOOP")) {
-        controlWord = "RUNLOOP";
-        controlWordLen = 7;
+      } else if (bufUpper.endsWith("LOOP")) {
+        controlWord = "LOOP";
+        controlWordLen = 4;
       } else if (bufUpper.endsWith("STOP")) {
         controlWord = "STOP";
         controlWordLen = 4;

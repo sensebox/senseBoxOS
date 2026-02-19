@@ -9,6 +9,8 @@ public:
     void setup() override;
     // Initialize BLE services
     bool begin() override;
+    // Initialize BLE services with custom device ID
+    bool begin(String deviceId);
     // needs to be called regularly to process BLE events
     void loop() override;
     
@@ -21,6 +23,8 @@ private:
     static String utf16leToString(uint8_t *data, size_t length);
     // Handle incoming BLE configuration writes.
     static void onBleConfigWrite();
+    // Check and handle connection state changes
+    static void checkConnectionState();
 };
 
 extern BLEModule bleModule;

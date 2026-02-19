@@ -16,6 +16,7 @@
 #include "logic/time.h"
 #include "peripherals/display.h"
 #include "peripherals/led.h"
+#include "peripherals/button.h"
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
 
@@ -25,9 +26,16 @@ void setup() {
   setupCommandMap();
   initLedRGB();
   initDisplay();
+  initButton();
   Wire.begin();
 
+  // Initialize BLE first (needed for device ID)
   bleModule.setup();
+  
+  // Get and cache device ID, then display it
+  String cachedId = getDeviceID();
+  displayDeviceID();
+  delay(2000);  // Show ID for 2 seconds
 
   // blink LED to show that senseBoxOS is running
   delay(100);
@@ -39,11 +47,12 @@ void setup() {
   delay(100);
   setLedRGB(0, 0, 0);
 
-  bleModule.begin();
+  bleModule.begin(cachedId);  // Pass device ID to BLE
   serialModule.begin();
 }
 
 void loop() {
   bleModule.loop();
   serialModule.loop();
+
 }
