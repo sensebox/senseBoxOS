@@ -2,6 +2,7 @@
 #include "helpers/interpreter.h"
 #include "helpers/command_parser.h"
 #include "helpers/sensor_registry.h"
+#include "peripherals/button.h"
 
 // Global sensor registry instance (declared in main.cpp)
 extern SensorRegistry sensorRegistry;
@@ -9,6 +10,21 @@ extern SensorRegistry sensorRegistry;
 // Simple arithmetic evaluator: + - * / (left-to-right)
 float evalNumber(String expr) {
   expr.trim();
+  
+  // Check for buttonPressed(pin) function
+  if (expr.startsWith("buttonPressed(") && expr.endsWith(")")) {
+    int startPos = expr.indexOf('(') + 1;
+    int endPos = expr.indexOf(')');
+    String pinStr = expr.substring(startPos, endPos);
+    pinStr.trim();
+    int pin = pinStr.toInt(); // Default to pin 0 if empty
+    
+    Serial.printf("[EVAL] buttonPressed(%d) called\n", pin);
+    bool pressed = isButtonPressed(pin);
+    Serial.printf("[EVAL] buttonPressed(%d) = %s\n", pin, pressed ? "true" : "false");
+    
+    return pressed ? 1.0 : 0.0;
+  }
   
   // First check for arithmetic operations
   int opPos = -1; char op = 0;
