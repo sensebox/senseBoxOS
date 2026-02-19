@@ -17,12 +17,14 @@ float evalNumber(String expr) {
     int endPos = expr.indexOf(')');
     String pinStr = expr.substring(startPos, endPos);
     pinStr.trim();
-    int pin = pinStr.toInt(); // Default to pin 0 if empty
     
-    Serial.printf("[EVAL] buttonPressed(%d) called\n", pin);
+    // Default to pin 0 (Boot button on ESP32-S2) if no pin specified
+    int pin = 0;
+    if (pinStr.length() > 0) {
+      pin = pinStr.toInt();
+    }
+    
     bool pressed = isButtonPressed(pin);
-    Serial.printf("[EVAL] buttonPressed(%d) = %s\n", pin, pressed ? "true" : "false");
-    
     return pressed ? 1.0 : 0.0;
   }
   

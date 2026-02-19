@@ -20,8 +20,16 @@ void executeLine(String line, int& pc) {
 
   // ===== IF / ELSE IF / ELSE — brace-aware (with indentation fallback) =====
   if (line.startsWith("if(")) {
-    int s=line.indexOf('(')+1, e=line.indexOf(')', s);
-    String condIf = line.substring(s,e);
+    // Find matching closing parenthesis for if condition
+    int s = line.indexOf('(') + 1;
+    int parenCount = 1;
+    int e = s;
+    while (e < line.length() && parenCount > 0) {
+      if (line[e] == '(') parenCount++;
+      else if (line[e] == ')') parenCount--;
+      if (parenCount > 0) e++;
+    }
+    String condIf = line.substring(s, e);
     bool ifTrue = evalCond(condIf);
     Block ifBlk = getFollowingBlock(pc);
 
@@ -33,8 +41,16 @@ void executeLine(String line, int& pc) {
       String head = scriptLines[cursor];
       String t = head; t.trim();
       if (t.startsWith("else if(")) {
-        int s2=t.indexOf('(')+1, e2=t.indexOf(')', s2);
-        String cond = t.substring(s2,e2);
+        // Find matching closing parenthesis for else if condition
+        int s2 = t.indexOf('(') + 1;
+        int parenCount = 1;
+        int e2 = s2;
+        while (e2 < t.length() && parenCount > 0) {
+          if (t[e2] == '(') parenCount++;
+          else if (t[e2] == ')') parenCount--;
+          if (parenCount > 0) e2++;
+        }
+        String cond = t.substring(s2, e2);
         Block b = getFollowingBlock(cursor);
         branches.push_back({Branch::ELSEIF, cond, b});
         cursor = b.after;
@@ -74,8 +90,16 @@ void executeLine(String line, int& pc) {
 
   // ===== WHILE (indentation fallback for body) =====
   if (line.startsWith("while(")) {
-    int s=line.indexOf('(')+1, e=line.indexOf(')', s);
-    String cond = line.substring(s,e);
+    // Find matching closing parenthesis for while condition
+    int s = line.indexOf('(') + 1;
+    int parenCount = 1;
+    int e = s;
+    while (e < line.length() && parenCount > 0) {
+      if (line[e] == '(') parenCount++;
+      else if (line[e] == ')') parenCount--;
+      if (parenCount > 0) e++;
+    }
+    String cond = line.substring(s, e);
     int loopStart = pc;
     while (evalCond(cond) && runningScript) {
       int innerPc = loopStart + 1;

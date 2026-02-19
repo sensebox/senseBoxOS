@@ -3,6 +3,8 @@
 
 // Map to store Button objects by pin number
 std::map<int, Button*> buttons;
+// Track last state to only log on changes
+std::map<int, bool> lastButtonState;
 
 void initButton() {
   // Initial setup if needed
@@ -14,6 +16,7 @@ bool isButtonPressed(int pin) {
   if (buttons.find(pin) == buttons.end()) {
     buttons[pin] = new Button(pin);
     buttons[pin]->begin();
+    lastButtonState[pin] = false;
     Serial.printf("[BUTTON] Created button on pin %d\n", pin);
   }
   
@@ -22,6 +25,11 @@ bool isButtonPressed(int pin) {
   
   // Return whether button is currently pressed
   bool pressed = buttons[pin]->isPressed();
-  Serial.printf("[BUTTON] Pin %d state: %s\n", pin, pressed ? "PRESSED" : "released");
+  
+  // Only log when state changes
+  if (lastButtonState[pin] != pressed) {
+    lastButtonState[pin] = pressed;
+  }
+  
   return pressed;
 }
