@@ -3,13 +3,30 @@
 #include "helpers/command_parser.h"
 #include "helpers/sensor_registry.h"
 #include "peripherals/button.h"
+#include "peripherals/sensors/accelerometer.h"
 
 // Global sensor registry instance (declared in main.cpp)
 extern SensorRegistry sensorRegistry;
 
+// Global accelerometer instance for shake detection
+AccelerometerSensor* globalAccelerometer = nullptr;
+
+bool isBoxShaken() {
+  if (globalAccelerometer == nullptr) {
+    globalAccelerometer = new AccelerometerSensor();
+  }
+  return globalAccelerometer->isShaken();
+}
+
 // Simple arithmetic evaluator: + - * / (left-to-right)
 float evalNumber(String expr) {
   expr.trim();
+  
+  // Check for boxShaken() function
+    if (expr.startsWith("boxShaken(") && expr.endsWith(")")) {
+    bool shaken = isBoxShaken();
+    return shaken ? 1.0 : 0.0;
+  }
   
   // Check for buttonPressed(pin) function
   if (expr.startsWith("buttonPressed(") && expr.endsWith(")")) {

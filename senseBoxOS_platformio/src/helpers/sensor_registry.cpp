@@ -2,6 +2,7 @@
 #include "helpers/error_codes.h"
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
+#include "peripherals/sensors/accelerometer.h"
 
 SensorRegistry sensorRegistry;
 
@@ -15,6 +16,8 @@ float SensorRegistry::readSensor(const String& sensorType, const String& measure
             sensor = new HDC1080Sensor();
         } else if (sensorType == "bme680") {
             sensor = new BME680Sensor();
+        } else if (sensorType == "accelerometer") {
+            sensor = new AccelerometerSensor();
         }
         
         if (sensor == nullptr) {

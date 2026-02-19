@@ -4,3 +4,4 @@
 
 float evalNumber(String expr);
 bool  evalCond(String cond);
+bool  isBoxShaken();
