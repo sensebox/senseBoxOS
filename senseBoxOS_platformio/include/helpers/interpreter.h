@@ -12,5 +12,6 @@ extern bool runForever;   // LOOP mode
 extern SensorRegistry sensorRegistry;
 
 void executeLine(String line, int& pc);
+void ignoreLine(String line, int& pc);
 void runScript();
 void pumpControl();

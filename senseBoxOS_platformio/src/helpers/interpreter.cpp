@@ -179,9 +179,30 @@ void executeLine(String line, int& pc) {
     return;
   }
 
-  Serial.println(String("Unknown command: ") + line);
-  runForever = false;
-  runningScript = false;
+  // Unknown commands are ignored: skip this line or any following block
+  ignoreLine(line, pc);
+  return;
+}
+
+// Ignore a line and skip any following block (brace-aware or indented)
+void ignoreLine(String line, int& pc) {
+  line.trim();
+  if (line.length() == 0) return;
+
+  // If this line introduces a block, skip the entire block
+  if (line.startsWith("if(") || line.startsWith("else if(") || line.startsWith("else")) {
+    Block b = getFollowingBlock(pc);
+    pc = b.after - 1;
+    return;
+  }
+
+  if (line.startsWith("while(") || line.startsWith("for(")) {
+    Block b = getFollowingBlock(pc);
+    pc = b.after - 1;
+    return;
+  }
+
+  // Otherwise it's a single line — nothing more to do (caller will advance pc)
 }
 
 void runScript() {
