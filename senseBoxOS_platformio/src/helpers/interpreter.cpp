@@ -7,6 +7,7 @@
 #include "commands.h"
 #include "communication/ble.h"
 #include "communication/serial.h"
+#include "peripherals/display.h"
 // TODO: including everything here seems suboptimal
 
 std::map<String, float> variables;
@@ -185,6 +186,7 @@ void executeLine(String line, int& pc) {
 
 void runScript() {
   do {
+    resetDisplayTextY();
     int pc = 0;
     while (pc < (int)scriptLines.size() && runningScript) {
       pumpControl();

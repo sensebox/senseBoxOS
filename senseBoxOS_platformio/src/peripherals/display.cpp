@@ -21,62 +21,59 @@ void initDisplay() {
   }
 }
 
-void displayNumber(float value) {
-
-  if (!oledInitialized) {
-    if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
-      oledInitialized = true;
-      oled.clearDisplay();
-      oled.setTextSize(1);
-      oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
-      oled.setCursor(0,0);
-      oled.display();
-      Serial.println("OLED initialized at 0x3D");
-    } else {
-      Serial.println("OLED init failed (0x3D)");
-      return;
-    }
+void clearDisplay() {
+  if (oledInitialized) {
+    oled.clearDisplay();
+    oled.display();
   }
-
-  oled.clearDisplay();
-  oled.setCursor(0,0);
-  oled.setTextSize(1);
-  oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
-  oled.println(value);
-  oled.display();
 }
-void displayText(const String& text) {
-  if (!oledInitialized) {
-    if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
-      oledInitialized = true;
-    } else {
-      return;
-    }
-  }
 
-  oled.clearDisplay();
-  oled.setCursor(0,0);
+
+static int displayTextY = 0;
+void displayText(const String& text) {
+  initDisplay();
   oled.setTextSize(1);
   oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
+  oled.setCursor(0, displayTextY);
   oled.println(text);
   oled.display();
+}
 
+void displayNumber(float value) {
+  initDisplay();
+  oled.setTextSize(1);
+  oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
+  oled.setCursor(0, displayTextY);
+  oled.println(value);
+  oled.display();
+
+}
+
+void resetDisplayTextY() {
+  displayTextY = 0;
+}
+
+void handleClearDisplay(String args) {
+  clearDisplay();
+  resetDisplayTextY();
 }
 
 
 
 void handleDisplay(String args) {
-
+  // increae y counter every time we call handleDisplay
+  displayTextY += 14;
   args.trim();
   if (args.startsWith("\"") && args.endsWith("\"")) {
     String inside = args.substring(1, args.length() - 1);
     displayText(inside);
     return;
   }
-
   // Ansonsten: Zahl evaluieren
   float num = evalNumber(args);
   displayNumber(num);
+
+
 }
 
 // Global device ID variable
