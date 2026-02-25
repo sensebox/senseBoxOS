@@ -3,6 +3,7 @@
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
 #include "peripherals/sensors/accelerometer.h"
+#include "peripherals/sensors/light.h"
 
 SensorRegistry sensorRegistry;
 
@@ -18,6 +19,8 @@ float SensorRegistry::readSensor(const String& sensorType, const String& measure
             sensor = new BME680Sensor();
         } else if (sensorType == "accelerometer") {
             sensor = new AccelerometerSensor();
+        } else if (sensorType == "board") {
+            sensor = new LightSensor();
         }
         
         if (sensor == nullptr) {

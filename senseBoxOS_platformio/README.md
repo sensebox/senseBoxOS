@@ -10,7 +10,18 @@ Its a ESP32-S2 Pseudocode Interpreter. Serial and BLE are supported.
     - `if/else if/else` (brace-aware, indentation fallback)
     - `for(init;cond;step)` (brace-aware, indentation fallback)
     - `while(... )` (indentation fallback)
+## Light Sensor Integration
 
+The light sensor is now available as `sensor:board:light`.
+
+Example usage:
+
+```
+lightBoard = sensor:board:light
+display(lightBoard)
+```
+
+This will read the analog value from the light sensor pin (PD_SENSE).
 ### Example script:
 ```
 temperatureHDC=sensor:hdc1080:temperature

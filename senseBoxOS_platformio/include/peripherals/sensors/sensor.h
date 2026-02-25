@@ -4,6 +4,8 @@
 #include <vector>
 #include "helpers/error_codes.h"
 
+
+
 class Sensor {
 public:
     virtual ~Sensor() = default;

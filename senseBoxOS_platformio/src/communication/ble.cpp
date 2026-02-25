@@ -22,7 +22,7 @@ const uint32_t BLE_DISCONNECT_TIMEOUT_MS = 5000;  // 5 seconds without activity 
 // List of known command prefixes
 static const char* knownCommands[] = {
   "led(", "delay(", "display(", "if(", "while(", "for(", "else", "}", 
-  "sensor:", "buttonPressed(", NULL
+  "sensor:", "buttonPressed(","lightBoard=sensor:board:light","airQuality = sensor:bme680:aiq",NULL
 };
 
 // Check if string starts with a known command
@@ -341,7 +341,18 @@ void BLEModule::onBleConfigWrite() {
     char c = chunk[i];
     Serial.printf("[BLE] Processing char[%d]: 0x%02X '%c'\n", i, (unsigned char)c, (c >= 32 && c < 127) ? c : '?');
 
-    // ❗ Ignore all control characters (ASCII 0-31) — some apps send them
+    // Handle newline (\n or \r) as explicit line break/flush
+    if (c == '\n' || c == '\r') {
+      Serial.printf("[BLE] -> Newline received, flushing buffer\n");
+      bleFlush("newline");
+      bleBuf = "";
+      bleParenDepth = 0;
+      bleBraceDepth = 0;
+      bleSawOpenParen = false;
+      bleSawOpenBrace = false;
+      continue;
+    }
+    // Ignore other control characters (ASCII 0-31)
     if (c >= 0 && c < 32) {
       Serial.printf("[BLE] -> Skipping control character\n");
       continue;

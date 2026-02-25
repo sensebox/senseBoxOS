@@ -47,7 +47,7 @@ SensorCommand parseSensorCommand(const String& command) {
         return SensorCommand(ERROR_EMPTY_PARAMETER, error);
     }
     
-    Serial.println("Successfully parsed command: sensor=" + sensorType + ", measurement=" + measurement);
+    // Serial.println("Successfully parsed command: sensor=" + sensorType + ", measurement=" + measurement);
     return SensorCommand(sensorType, measurement);
 }
 
