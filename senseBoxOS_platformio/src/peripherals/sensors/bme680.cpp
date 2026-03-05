@@ -21,10 +21,10 @@ bsecSensor BME680Sensor::sensorList[14] = {
   BSEC_OUTPUT_COMPENSATED_GAS
 };
 
-BME680Sensor::BME680Sensor() : BaseSensor() {}
+BME680Sensor::BME680Sensor() : BaseSensor() {initialized = true;}
 
 std::vector<String> BME680Sensor::getSupportedMeasurements() const {
-    return {"temperature", "humidity", "pressure"};
+    return {"temperature", "humidity", "pressure", "iaq", "co2eq"};
 }
 
 String BME680Sensor::getSensorType() const {
@@ -70,58 +70,113 @@ bool BME680Sensor::begin() {
         Serial.println("BME680 Sensor subscription failed!");
         return false;
     }
+    // Check if IAQ and CO2eq outputs are available and valid
+    float iaq = bme680.getData(BSEC_OUTPUT_IAQ).signal;
+    float co2eq = bme680.getData(BSEC_OUTPUT_CO2_EQUIVALENT).signal;
+
+    if (isnan(iaq) || iaq < 0.0f || iaq > 500.0f) {
+        logError(ERROR_SENSOR_READ_FAILED, "BME680: IAQ reading out of expected range: " + String(iaq));
+        return false;
+    }
+
+    if (isnan(co2eq) || co2eq < 250.0f || co2eq > 5000.0f) {
+        logError(ERROR_SENSOR_READ_FAILED, "BME680: CO2eq reading out of expected range: " + String(co2eq));
+        return false;
+    }
     
     Serial.println("BME680 Sensor initialized");
     return true;
 }
 
+void BME680Sensor::updateSensorData() {
+    // Prüfe, ob genug Zeit seit dem letzten Update vergangen ist
+    unsigned long currentTime = millis();
+    if (currentTime - lastUpdateTime < updateInterval) {
+        // Zu früh für ein Update, überspringe
+        return;
+    }
+    
+    lastUpdateTime = currentTime;
+    
+    // Rufe bme680.run() auf um neue Daten zu bekommen
+    if (!bme680.run()) {
+        Serial.println("BME680: bme680.run() returned false");
+        return;
+    }
+    
+    // Prüfe ob neue Daten verfügbar sind
+    if (bme680.status != BSEC_OK) {
+        Serial.println("BME680: BSEC status not OK: " + String(bme680.status));
+        dataValid = false;
+        return;
+    }
 
+    // Alle Sensorwerte aktualisieren
+    cachedTemperature = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE).signal;
+    cachedHumidity = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY).signal;
+    cachedPressure = bme680.getData(BSEC_OUTPUT_RAW_PRESSURE).signal;
+    cachedIaq = bme680.getData(BSEC_OUTPUT_IAQ).signal;
+    cachedCo2eq = bme680.getData(BSEC_OUTPUT_CO2_EQUIVALENT).signal;
+    
+    // Validierung der Werte
+    dataValid = true;
+    
+    if (cachedTemperature < -50.0f || cachedTemperature > 100.0f) {
+        logError(ERROR_SENSOR_READ_FAILED, "BME680: Temperature out of range: " + String(cachedTemperature));
+        dataValid = false;
+    }
+    
+    if (cachedHumidity < 0.0f || cachedHumidity > 100.0f) {
+        logError(ERROR_SENSOR_READ_FAILED, "BME680: Humidity out of range: " + String(cachedHumidity));
+        dataValid = false;
+    }
+    
+    if (cachedPressure < 200.0f || cachedPressure > 1200.0f) {
+        logError(ERROR_SENSOR_READ_FAILED, "BME680: Pressure out of range: " + String(cachedPressure));
+        dataValid = false;
+    }
+    
+    if (cachedIaq < 0.0f || cachedIaq > 500.0f) {
+        logError(ERROR_SENSOR_READ_FAILED, "BME680: IAQ out of range: " + String(cachedIaq));
+        dataValid = false;
+    }
+    
+    if (cachedCo2eq < 250.0f || cachedCo2eq > 5000.0f) {
+        logError(ERROR_SENSOR_READ_FAILED, "BME680: CO2eq out of range: " + String(cachedCo2eq));
+        dataValid = false;
+    }
+
+}
 
 float BME680Sensor::readMeasurement(const String& measurementType) {
-    if (!warmUp(warmup_timeout_ms)) {
-        Serial.println("BME680 Sensor warm-up timed out!");
-        return ERROR_SENSOR_READ_FAILED;
-    }
     
     float result = ERROR_UNKNOWN;
     
     try {
         if (measurementType.equalsIgnoreCase("temperature")) {
-            result = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE).signal;
-            
-            // Validate temperature reading (BME680 range: -40°C to 85°C)
-            if (result < -50.0f || result > 100.0f) {
-                logError(ERROR_SENSOR_READ_FAILED, "BME680: Temperature reading out of expected range: " + String(result) + "°C");
-                return ERROR_SENSOR_READ_FAILED;
-            }
+            result = cachedTemperature;
             
         } else if (measurementType.equalsIgnoreCase("humidity")) {
-            result = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY).signal;
-            
-            // Validate humidity reading (BME680 range: 0% to 100% RH)
-            if (result < 0.0f || result > 100.0f) {
-                logError(ERROR_SENSOR_READ_FAILED, "BME680: Humidity reading out of expected range: " + String(result) + "%");
-                return ERROR_SENSOR_READ_FAILED;
-            }
+            result = cachedHumidity;
             
         } else if (measurementType.equalsIgnoreCase("pressure")) {
-            result = bme680.getData(BSEC_OUTPUT_RAW_PRESSURE).signal;
+            result = cachedPressure;
             
-            // Validate pressure reading (BME680 range: 300-1100 hPa)
-            if (result < 200.0f || result > 1200.0f) {
-                logError(ERROR_SENSOR_READ_FAILED, "BME680: Pressure reading out of expected range: " + String(result) + " hPa");
-                return ERROR_SENSOR_READ_FAILED;
-            }
+        } else if (measurementType.equalsIgnoreCase("iaq")) {
+            result = cachedIaq;
+            Serial.println("BME680: readMeasurement(iaq) returning: " + String(result));
+            
+        } else if (measurementType.equalsIgnoreCase("co2eq")) {
+            result = cachedCo2eq;
             
         } else {
-            // This should not happen due to validation in base class, but just in case
             logError(ERROR_MEASUREMENT_NOT_SUPPORTED, "BME680: Invalid measurement type: " + measurementType);
             return ERROR_MEASUREMENT_NOT_SUPPORTED;
         }
         
         // Check for NaN or infinite values
         if (isnan(result) || isinf(result)) {
-            logError(ERROR_SENSOR_READ_FAILED, "BME680: Sensor returned invalid value (NaN or Inf) for " + measurementType);
+            logError(ERROR_SENSOR_READ_FAILED, "BME680: Cached value is invalid (NaN or Inf) for " + measurementType);
             return ERROR_SENSOR_READ_FAILED;
         }
         

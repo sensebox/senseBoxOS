@@ -7,6 +7,12 @@
 
 SensorRegistry sensorRegistry;
 
+void SensorRegistry::registerSensor(const String& sensorType, Sensor* sensor) {
+    if (sensor != nullptr) {
+        sensors[sensorType] = sensor;
+    }
+}
+
 float SensorRegistry::readSensor(const String& sensorType, const String& measurement) {
     // Initialize sensor on-demand
     auto it = sensors.find(sensorType);

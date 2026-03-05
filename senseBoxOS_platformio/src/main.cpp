@@ -20,12 +20,19 @@
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
 
+BME680Sensor BME680Sensor;
+
 void setup() {
   serialModule.setup();
 
   setupCommandMap();
   initLedRGB();
   initDisplay();
+  BME680Sensor.begin();
+  
+  // Register the global BME680 sensor instance with the registry
+  sensorRegistry.registerSensor("bme680", &BME680Sensor);
+
   initButton();
   Wire.begin();
 
@@ -53,6 +60,7 @@ void setup() {
 
 void loop() {
   bleModule.loop();
+  BME680Sensor.updateSensorData();
   serialModule.loop();
 
 }

@@ -12,6 +12,9 @@ public:
     SensorRegistry() = default;
     ~SensorRegistry() = default;
     
+    // Register an external sensor instance
+    void registerSensor(const String& sensorType, Sensor* sensor);
+    
     // Read a value from a sensor (creates sensor on-demand)
     float readSensor(const String& sensorType, const String& measurement);
     
