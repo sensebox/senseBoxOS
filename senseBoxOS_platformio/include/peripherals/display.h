@@ -18,6 +18,8 @@ void resetDisplayTextY();
 void handleClearDisplay(String args);
 String getDeviceID();
 void displayDeviceID();
+void displayMeasurement(float value, const String& sensorName, const String& unit);
+void handleDisplayMeasurement(String args);
 
 // Global device ID
 extern String deviceID;

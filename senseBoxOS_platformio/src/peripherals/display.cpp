@@ -141,3 +141,80 @@ void displayDeviceID() {
   
   oled.display();
 }
+
+void displayMeasurement(float value, const String& sensorName, const String& unit) {
+  initDisplay();
+  oled.clearDisplay();
+  
+  // Format value with 2 decimal places
+  String valueStr = String(value, 2);
+  String valueWithUnit = valueStr + " " + unit;
+  
+  // Calculate dimensions for value+unit (larger text, size 2)
+  oled.setTextSize(2);
+  int16_t x1, y1;
+  uint16_t w, h;
+  oled.getTextBounds(valueWithUnit, 0, 0, &x1, &y1, &w, &h);
+  
+  // Display value and unit centered at top
+  int valueX = (SCREEN_WIDTH - w) / 2;
+  int valueY = 12;
+  oled.setCursor(valueX, valueY);
+  oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
+  oled.println(valueWithUnit);
+  
+  // Calculate dimensions for sensor name (smaller text, size 1)
+  oled.setTextSize(1);
+  oled.getTextBounds(sensorName, 0, 0, &x1, &y1, &w, &h);
+  
+  // Display sensor name centered below value
+  int nameX = (SCREEN_WIDTH - w) / 2;
+  int nameY = valueY + 20;  // 20 pixels below value
+  oled.setCursor(nameX, nameY);
+  oled.println(sensorName);
+  
+  oled.display();
+}
+
+void handleDisplayMeasurement(String args) {
+  // Parse format: displayMeasurement(sensor:bme680:temperature, "Temperatur", "°C")
+  args.trim();
+  
+  // Find comma positions
+  int firstComma = args.indexOf(',');
+  if (firstComma == -1) {
+    Serial.println("Error: displayMeasurement requires 3 arguments: value, name, unit");
+    return;
+  }
+  
+  int secondComma = args.indexOf(',', firstComma + 1);
+  if (secondComma == -1) {
+    Serial.println("Error: displayMeasurement requires 3 arguments: value, name, unit");
+    return;
+  }
+  
+  // Extract parts
+  String valuePart = args.substring(0, firstComma);
+  String namePart = args.substring(firstComma + 1, secondComma);
+  String unitPart = args.substring(secondComma + 1);
+  
+  // Clean up whitespace
+  valuePart.trim();
+  namePart.trim();
+  unitPart.trim();
+  
+  // Extract string literals (remove quotes)
+  if (namePart.startsWith("\"") && namePart.endsWith("\"")) {
+    namePart = namePart.substring(1, namePart.length() - 1);
+  }
+  
+  if (unitPart.startsWith("\"") && unitPart.endsWith("\"")) {
+    unitPart = unitPart.substring(1, unitPart.length() - 1);
+  }
+  
+  // Evaluate the value (could be sensor reading or numeric expression)
+  float value = evalNumber(valuePart);
+  
+  // Display the measurement
+  displayMeasurement(value, namePart, unitPart);
+}

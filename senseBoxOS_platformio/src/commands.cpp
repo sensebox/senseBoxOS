@@ -28,6 +28,7 @@ void handleSensorCommand(String args) {
 void setupCommandMap() {
   commandMap["display"] = handleDisplay;
   commandMap["clearDisplay"] = handleClearDisplay;
+  commandMap["displayMeasurement"] = handleDisplayMeasurement;
   commandMap["led"]     = handleLed;
   commandMap["delay"]   = handleDelay;
   commandMap["sensor"]  = handleSensorCommand;
