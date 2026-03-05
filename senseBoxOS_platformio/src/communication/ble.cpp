@@ -22,7 +22,7 @@ const uint32_t BLE_DISCONNECT_TIMEOUT_MS = 5000;  // 5 seconds without activity 
 // List of known command prefixes
 static const char* knownCommands[] = {
   "led(", "delay(", "display(", "clearDisplay(", "if(", "while(", "for(", "else", "}", 
-  "sensor:", "buttonPressed(","lightBoard=sensor:board:light","airQuality = sensor:bme680:aiq",NULL
+  "sensor:", "buttonPressed(","lightBoard=sensor:board:light",NULL
 };
 
 // Check if string starts with a known command
