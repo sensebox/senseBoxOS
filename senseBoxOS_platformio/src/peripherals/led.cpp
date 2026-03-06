@@ -14,6 +14,15 @@ void setLedRGB(int r, int g, int b) {
   rgb_led_1.show();
 }
 
+void randomLed() {
+  rgb_led_1.setPixelColor(0, rgb_led_1.Color(random(0, 255), random(0, 255), random(0, 255)));
+  rgb_led_1.show();
+}
+
+void handleRandomLed(String args) {
+  randomLed();
+}
+
 void handleLed(String args) {
   args.trim();
   if (args.indexOf(',') != -1) {
