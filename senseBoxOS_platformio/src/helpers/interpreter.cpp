@@ -225,4 +225,6 @@ void runScript() {
 void pumpControl() {
   bleModule.loop();
   serialModule.loop();
+  // Ensure periodic sensor updates while a script is running (LOOP mode)
+  sensorRegistry.pollSensors();
 }

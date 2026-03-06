@@ -12,6 +12,8 @@ public:
     bool begin() override;
     bool warmUp(int timeout);
     void updateSensorData();
+    // Called periodically to let the sensor update its internal cache
+    void poll() override { updateSensorData(); }
     float readMeasurement(const String& measurementType) override;
 
 

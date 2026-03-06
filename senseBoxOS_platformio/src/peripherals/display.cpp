@@ -1,5 +1,6 @@
 #include "peripherals/display.h"
 #include "logic/eval.h"
+#include "helpers/command_parser.h"
 #include <SenseBoxBLE.h>
 
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -142,12 +143,12 @@ void displayDeviceID() {
   oled.display();
 }
 
-void displayMeasurement(float value, const String& sensorName, const String& unit) {
+void displayMeasurement(float value, const String& sensorName, const String& unit, int decimals) {
   initDisplay();
   oled.clearDisplay();
   
-  // Format value with 2 decimal places
-  String valueStr = String(value, 2);
+  // Format value with requested decimal places
+  String valueStr = String(value, decimals);
   String valueWithUnit = valueStr + " " + unit;
   
   // Calculate dimensions for value+unit (larger text, size 2)
@@ -212,9 +213,28 @@ void handleDisplayMeasurement(String args) {
     unitPart = unitPart.substring(1, unitPart.length() - 1);
   }
   
+  // Decide decimal places based on sensor/measurement (if it's a sensor command)
+  int decimals = 2;
+  if (isSensorCommand(valuePart)) {
+    SensorCommand cmd = parseSensorCommand(valuePart);
+    if (cmd.isValid) {
+      String m = cmd.measurement;
+      m.toLowerCase();
+      Serial.println("Parsed sensor command for measurement: " + m); // Debug output
+      if (m.equalsIgnoreCase("temperature")) decimals = 1;
+      else if (m.equalsIgnoreCase("iaq")) decimals = 0;
+      else if (m.equalsIgnoreCase("humidity")) decimals = 0;
+      else if (m.equalsIgnoreCase("brightness") || m.equalsIgnoreCase("light") || m.equalsIgnoreCase("lux")) decimals = 0;
+    }
+  } else {
+    // Try to infer from unit string: Celsius -> 1 decimal, percent -> 0
+    if (unitPart.indexOf("°C") != -1 || unitPart.indexOf("C") != -1) decimals = 1;
+    else if (unitPart.indexOf("%") != -1) decimals = 0;
+  }
+
   // Evaluate the value (could be sensor reading or numeric expression)
   float value = evalNumber(valuePart);
-  
-  // Display the measurement
-  displayMeasurement(value, namePart, unitPart);
+
+  // Display the measurement with chosen precision
+  displayMeasurement(value, namePart, unitPart, decimals);
 }

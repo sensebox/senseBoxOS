@@ -74,3 +74,12 @@ std::vector<String> SensorRegistry::getSupportedMeasurements(const String& senso
     
     return sensor->getSupportedMeasurements();
 }
+
+void SensorRegistry::pollSensors() {
+    for (auto &pair : sensors) {
+        Sensor* s = pair.second;
+        if (s != nullptr) {
+            s->poll();
+        }
+    }
+}

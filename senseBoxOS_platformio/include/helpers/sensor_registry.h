@@ -26,6 +26,9 @@ public:
     
     // Get supported measurements for a specific sensor
     std::vector<String> getSupportedMeasurements(const String& sensorType) const;
+
+    // Poll all registered sensors (call their poll hook)
+    void pollSensors();
 };
 
 extern SensorRegistry sensorRegistry;

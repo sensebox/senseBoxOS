@@ -164,7 +164,6 @@ float BME680Sensor::readMeasurement(const String& measurementType) {
             
         } else if (measurementType.equalsIgnoreCase("iaq")) {
             result = cachedIaq;
-            Serial.println("BME680: readMeasurement(iaq) returning: " + String(result));
             
         } else if (measurementType.equalsIgnoreCase("co2eq")) {
             result = cachedCo2eq;
