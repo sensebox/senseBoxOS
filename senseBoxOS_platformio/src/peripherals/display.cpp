@@ -6,6 +6,47 @@
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 bool oledInitialized = false;
 
+// Helper: Convert UTF-8 string to CP437 for Adafruit GFX display
+// CP437 contains German umlauts: ä=0x84, Ä=0x8E, ö=0x94, Ö=0x99, ü=0x81, Ü=0x9A, ß=0xE1
+String utf8ToCP437(const String& utf8) {
+  String result = "";
+  for (int i = 0; i < utf8.length(); i++) {
+    uint8_t c = utf8[i];
+    
+    // Check for UTF-8 multi-byte sequences
+    if ((c & 0x80) == 0) {
+      // ASCII character (0x00-0x7F) - pass through
+      result += (char)c;
+    } else if ((c & 0xE0) == 0xC0 && i + 1 < utf8.length()) {
+      // 2-byte UTF-8 sequence
+      uint8_t c2 = utf8[i + 1];
+      uint16_t unicode = ((c & 0x1F) << 6) | (c2 & 0x3F);
+      
+      // Map common German characters to CP437
+      switch (unicode) {
+        case 0x00E4: result += (char)0x84; break; // ä
+        case 0x00C4: result += (char)0x8E; break; // Ä
+        case 0x00F6: result += (char)0x94; break; // ö
+        case 0x00D6: result += (char)0x99; break; // Ö
+        case 0x00FC: result += (char)0x81; break; // ü
+        case 0x00DC: result += (char)0x9A; break; // Ü
+        case 0x00DF: result += (char)0xE1; break; // ß
+        case 0x00B0: result += (char)0xF8; break; // ° (degree symbol)
+        default: result += '?'; break; // Unknown character
+      }
+      i++; // Skip next byte
+    } else if ((c & 0xF0) == 0xE0 && i + 2 < utf8.length()) {
+      // 3-byte UTF-8 sequence (we don't need these for German, but handle gracefully)
+      result += '?';
+      i += 2;
+    } else {
+      // Invalid or unsupported - use question mark
+      result += '?';
+    }
+  }
+  return result;
+}
+
 void initDisplay() {
   if (!oledInitialized) {
     if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
@@ -25,7 +66,6 @@ void initDisplay() {
 void clearDisplay() {
   if (oledInitialized) {
     oled.clearDisplay();
-    oled.display();
   }
 }
 
@@ -36,7 +76,7 @@ void displayText(const String& text) {
   oled.setTextSize(1);
   oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
   oled.setCursor(0, displayTextY);
-  oled.println(text);
+  oled.println(utf8ToCP437(text));
   oled.display();
 }
 
@@ -57,6 +97,10 @@ void resetDisplayTextY() {
 void handleClearDisplay(String args) {
   clearDisplay();
   resetDisplayTextY();
+  // Update display only when explicitly clearing (user command)
+  if (oledInitialized) {
+    oled.display();
+  }
 }
 
 
@@ -135,7 +179,7 @@ void displayDeviceID() {
   
   // German instruction text at bottom - centered
   oled.setTextSize(1);
-  String instruction = "Verbinde Basic App";
+  String instruction = utf8ToCP437("Verbinde Basic App");
   oled.getTextBounds(instruction, 0, 0, &x1, &y1, &w, &h);
   oled.setCursor((128 - w) / 2, 54);
   oled.println(instruction);
@@ -149,7 +193,7 @@ void displayMeasurement(float value, const String& sensorName, const String& uni
   
   // Format value with requested decimal places
   String valueStr = String(value, decimals);
-  String valueWithUnit = valueStr + " " + unit;
+  String valueWithUnit = valueStr + " " + utf8ToCP437(unit);
   
   // Calculate dimensions for value+unit (larger text, size 2)
   oled.setTextSize(2);
@@ -166,13 +210,14 @@ void displayMeasurement(float value, const String& sensorName, const String& uni
   
   // Calculate dimensions for sensor name (smaller text, size 1)
   oled.setTextSize(1);
-  oled.getTextBounds(sensorName, 0, 0, &x1, &y1, &w, &h);
+  String convertedName = utf8ToCP437(sensorName);
+  oled.getTextBounds(convertedName, 0, 0, &x1, &y1, &w, &h);
   
   // Display sensor name centered below value
   int nameX = (SCREEN_WIDTH - w) / 2;
   int nameY = valueY + 20;  // 20 pixels below value
   oled.setCursor(nameX, nameY);
-  oled.println(sensorName);
+  oled.println(convertedName);
   
   oled.display();
 }
@@ -220,7 +265,6 @@ void handleDisplayMeasurement(String args) {
     if (cmd.isValid) {
       String m = cmd.measurement;
       m.toLowerCase();
-      Serial.println("Parsed sensor command for measurement: " + m); // Debug output
       if (m.equalsIgnoreCase("temperature")) decimals = 1;
       else if (m.equalsIgnoreCase("iaq")) decimals = 0;
       else if (m.equalsIgnoreCase("humidity")) decimals = 0;
