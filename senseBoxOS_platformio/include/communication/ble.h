@@ -13,8 +13,11 @@ public:
     bool begin(String deviceId);
     // needs to be called regularly to process BLE events
     void loop() override;
+    // Check if BLE is available
+    bool isAvailable() const { return bleAvailable; }
     
 private:
+    bool bleAvailable = false;
     // flush helper that prints the completed message
     static void bleFlush(const char* reason);
     // When a complete line arrives while idle (no parens), flush it.

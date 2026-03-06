@@ -18,6 +18,7 @@ void resetDisplayTextY();
 void handleClearDisplay(String args);
 String getDeviceID();
 void displayDeviceID();
+void displaySerialOnlyMode();
 void displayMeasurement(float value, const String& sensorName, const String& unit, int decimals = 2);
 void handleDisplayMeasurement(String args);
 

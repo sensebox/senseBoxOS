@@ -28,21 +28,30 @@ void setup() {
   setupCommandMap();
   initLedRGB();
   initDisplay();
-  BME680Sensor.begin();
   
-  // Register the global BME680 sensor instance with the registry
-  sensorRegistry.registerSensor("bme680", &BME680Sensor);
+  // Try to initialize BME680, only register if available
+  if (BME680Sensor.begin()) {
+    sensorRegistry.registerSensor("bme680", &BME680Sensor);
+  } else {
+    Serial.println("BME680 not available - sensor not registered");
+  }
 
   initButton();
   Wire.begin();
 
-  // Initialize BLE first (needed for device ID)
+  // Initialize BLE first (to detect if BLE module is present)
   bleModule.setup();
   
-  // Get and cache device ID, then display it
-  String cachedId = getDeviceID();
-  displayDeviceID();
-  delay(2000);  // Show ID for 2 seconds
+  // Display appropriate startup screen based on BLE availability
+  if (bleModule.isAvailable()) {
+    String cachedId = getDeviceID();
+    displayDeviceID();
+    delay(2000);  // Show ID for 2 seconds
+  } else {
+    Serial.println("BLE not available - showing Serial-Only mode");
+    displaySerialOnlyMode();
+    delay(2000);  // Show message for 2 seconds
+  }
 
   // blink LED to show that senseBoxOS is running
   delay(100);
@@ -54,13 +63,22 @@ void setup() {
   delay(100);
   setLedRGB(0, 0, 0);
 
-  bleModule.begin(cachedId);  // Pass device ID to BLE
+  // Only begin BLE advertising if BLE is available
+  if (bleModule.isAvailable()) {
+    String cachedId = getDeviceID();
+    bleModule.begin(cachedId);  // Pass device ID to BLE
+  }
+  
   serialModule.begin();
 }
 
 void loop() {
   bleModule.loop();
-  BME680Sensor.updateSensorData();
+  
+  // Only update BME680 if sensor is available
+  if (BME680Sensor.isAvailable()) {
+    BME680Sensor.updateSensorData();
+  }
+  
   serialModule.loop();
-
 }

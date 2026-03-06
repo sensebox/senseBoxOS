@@ -131,10 +131,15 @@ String getDeviceID() {
     String fullId = SenseBoxBLE::getMCUId();
     Serial.printf("Full MCU ID: %s\n", fullId.c_str());
     
-    if (fullId.length() >= 4) {
+    // Check if we got a valid ID (not "-1", not "0", and reasonable length)
+    if (fullId.length() >= 4 && fullId != "-1" && fullId != "0") {
       deviceID = fullId.substring(fullId.length() - 4);
+    } else if (fullId.length() > 0 && fullId.length() < 4 && fullId != "-1" && fullId != "0") {
+      deviceID = fullId;  // Use full ID if less than 4 chars but valid
     } else {
-      deviceID = fullId;  // Use full ID if less than 4 chars
+      // BLE not available, use fallback ID
+      deviceID = "NBEE";  // No BLE
+      Serial.println("BLE not available - using fallback device ID");
     }
     
     Serial.printf("Device ID: %s\n", deviceID.c_str());
@@ -183,6 +188,43 @@ void displayDeviceID() {
   oled.getTextBounds(instruction, 0, 0, &x1, &y1, &w, &h);
   oled.setCursor((128 - w) / 2, 54);
   oled.println(instruction);
+  
+  oled.display();
+}
+
+void displaySerialOnlyMode() {
+  if (!oledInitialized) {
+    if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
+      oledInitialized = true;
+    } else {
+      return;
+    }
+  }
+
+  oled.clearDisplay();
+  
+  // Title
+  oled.setTextSize(2);
+  oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
+  int16_t x1, y1;
+  uint16_t w, h;
+  String title = "Blockly";
+  oled.getTextBounds(title, 0, 0, &x1, &y1, &w, &h);
+  oled.setCursor((128 - w) / 2, 8);
+  oled.println(title);
+  
+  // Instructions - centered
+  oled.setTextSize(1);
+  String line1 = utf8ToCP437("Code über USB");
+  String line2 = utf8ToCP437("hochladen");
+  
+  oled.getTextBounds(line1, 0, 0, &x1, &y1, &w, &h);
+  oled.setCursor((128 - w) / 2, 36);
+  oled.println(line1);
+  
+  oled.getTextBounds(line2, 0, 0, &x1, &y1, &w, &h);
+  oled.setCursor((128 - w) / 2, 46);
+  oled.println(line2);
   
   oled.display();
 }

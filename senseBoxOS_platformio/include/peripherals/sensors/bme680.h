@@ -15,7 +15,8 @@ public:
     // Called periodically to let the sensor update its internal cache
     void poll() override { updateSensorData(); }
     float readMeasurement(const String& measurementType) override;
-
+    // Check if sensor is available
+    bool isAvailable() const { return sensorAvailable; }
 
     
 protected:
@@ -32,6 +33,7 @@ private:
     float cachedIaq = 0.0f;
     float cachedCo2eq = 0.0f;
     bool dataValid = false;
+    bool sensorAvailable = false;
     
     // Zeitsteuerung für Updates
     unsigned long lastUpdateTime = 0;

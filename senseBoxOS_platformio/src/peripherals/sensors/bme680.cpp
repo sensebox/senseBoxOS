@@ -54,9 +54,11 @@ bool BME680Sensor::warmUp(int timeout) {
 }
 
 bool BME680Sensor::begin() {
+    Serial.println("[BME680] Attempting to initialize BME680...");
     bme680.begin(BME68X_I2C_ADDR_LOW, Wire);
     if (bme680.status != BSEC_OK || bme680.sensor.status != BME68X_OK) {
-        Serial.println("BME680 Sensor initialization failed!");
+        Serial.println("[BME680] Sensor not detected - BME680 features disabled");
+        sensorAvailable = false;
         return false;
     }
 
@@ -67,7 +69,8 @@ bool BME680Sensor::begin() {
     }
 
     if (bme680.status != BSEC_OK || bme680.sensor.status != BME68X_OK) {
-        Serial.println("BME680 Sensor subscription failed!");
+        Serial.println("[BME680] Sensor subscription failed!");
+        sensorAvailable = false;
         return false;
     }
     // Check if IAQ and CO2eq outputs are available and valid
@@ -76,19 +79,25 @@ bool BME680Sensor::begin() {
 
     if (isnan(iaq) || iaq < 0.0f || iaq > 500.0f) {
         logError(ERROR_SENSOR_READ_FAILED, "BME680: IAQ reading out of expected range: " + String(iaq));
+        sensorAvailable = false;
         return false;
     }
 
     if (isnan(co2eq) || co2eq < 250.0f || co2eq > 5000.0f) {
         logError(ERROR_SENSOR_READ_FAILED, "BME680: CO2eq reading out of expected range: " + String(co2eq));
+        sensorAvailable = false;
         return false;
     }
     
-    Serial.println("BME680 Sensor initialized");
+    sensorAvailable = true;
+    Serial.println("[BME680] Sensor detected and initialized");
     return true;
 }
 
 void BME680Sensor::updateSensorData() {
+    // Skip if sensor not available
+    if (!sensorAvailable) return;
+    
     // Prüfe, ob genug Zeit seit dem letzten Update vergangen ist
     unsigned long currentTime = millis();
     if (currentTime - lastUpdateTime < updateInterval) {

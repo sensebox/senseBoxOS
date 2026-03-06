@@ -67,15 +67,45 @@ static String cleanLine(String line) {
 }
 
 void BLEModule::setup() {
+  Serial.println("[BLE] Attempting to initialize BLE...");
+  
+  // Try quick detection first with minimal delay
   SenseBoxBLE::start("senseBox-BLE");
-  delay(500);  // Wait for BLE to initialize
+  delay(100);  // Short initial delay
+  
+  // Try to get MCU ID to verify BLE is working
+  String testId = SenseBoxBLE::getMCUId();
+  
+  // If first attempt fails, try once more with slightly longer delay
+  if (testId.length() == 0 || testId == "-1" || testId == "0") {
+    delay(200);
+    testId = SenseBoxBLE::getMCUId();
+  }
+  
+  // Check if we got a valid ID (not empty, not "-1", and reasonable length)
+  if (testId.length() > 0 && testId != "-1" && testId != "0" && testId.length() > 2) {
+    bleAvailable = true;
+    Serial.println("[BLE] BLE module detected and initialized");
+  } else {
+    bleAvailable = false;
+    Serial.printf("[BLE] BLE module not detected (ID: '%s') - BLE features disabled\n", testId.c_str());
+  }
 }
 
 bool BLEModule::begin() {
+  if (!bleAvailable) {
+    Serial.println("[BLE] BLE not available, skipping begin()");
+    return false;
+  }
   return begin(deviceID);
 }
 
 bool BLEModule::begin(String deviceId) {
+  if (!bleAvailable) {
+    Serial.println("[BLE] BLE not available, skipping begin()");
+    return false;
+  }
+  
   int rxHandle = SenseBoxBLE::setConfigCharacteristic(BLE_SERVICE_UUID, BLE_RX_UUID);
   if (rxHandle <= 0) Serial.println("BLE: setConfigCharacteristic failed or already set.");
   SenseBoxBLE::configHandler = BLEModule::onBleConfigWrite;
@@ -90,6 +120,8 @@ bool BLEModule::begin(String deviceId) {
 }
 
 void BLEModule::loop() {
+  if (!bleAvailable) return;  // Skip polling if BLE not available
+  
   SenseBoxBLE::poll();
   bleMaybeFlushByIdle();
   checkConnectionState();
