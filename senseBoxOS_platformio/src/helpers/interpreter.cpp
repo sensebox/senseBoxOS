@@ -15,12 +15,35 @@ std::vector<String> scriptLines;
 bool runningScript = false;
 bool runForever = false;   // LOOP mode
 
+// Helper function to check if a line starts with a keyword (with optional space before '(')
+bool startsWithKeyword(const String& line, const String& keyword) {
+  String trimmed = line;
+  trimmed.trim();
+  
+  // Check for "keyword(" without space
+  if (trimmed.startsWith(keyword + "(")) {
+    return true;
+  }
+  
+  // Check for "keyword (" with space
+  if (trimmed.startsWith(keyword + " (")) {
+    return true;
+  }
+  
+  // Check for just the keyword (for "else")
+  if (keyword == "else" && trimmed.startsWith("else")) {
+    return true;
+  }
+  
+  return false;
+}
+
 void executeLine(String line, int& pc) {
   line.trim();
   if (line.length()==0) return;
 
   // ===== IF / ELSE IF / ELSE — brace-aware (with indentation fallback) =====
-  if (line.startsWith("if(")) {
+  if (startsWithKeyword(line, "if")) {
     // Find matching closing parenthesis for if condition
     int s = line.indexOf('(') + 1;
     int parenCount = 1;
@@ -41,7 +64,7 @@ void executeLine(String line, int& pc) {
     while (cursor < (int)scriptLines.size()) {
       String head = scriptLines[cursor];
       String t = head; t.trim();
-      if (t.startsWith("else if(")) {
+      if (startsWithKeyword(t, "else if")) {
         // Find matching closing parenthesis for else if condition
         int s2 = t.indexOf('(') + 1;
         int parenCount = 1;
@@ -83,14 +106,14 @@ void executeLine(String line, int& pc) {
   }
 
   // Standalone 'else if' / 'else' (without its 'if'): skip their bodies
-  if (line.startsWith("else if(") || line.startsWith("else")) {
+  if (startsWithKeyword(line, "else if") || startsWithKeyword(line, "else")) {
     Block b = getFollowingBlock(pc);
     pc = b.after - 1;
     return;
   }
 
   // ===== WHILE (indentation fallback for body) =====
-  if (line.startsWith("while(")) {
+  if (startsWithKeyword(line, "while")) {
     // Find matching closing parenthesis for while condition
     int s = line.indexOf('(') + 1;
     int parenCount = 1;
@@ -123,7 +146,7 @@ void executeLine(String line, int& pc) {
   }
 
   // ===== FOR — now brace-aware (with indentation fallback) =====
-  if (line.startsWith("for(")) {
+  if (startsWithKeyword(line, "for")) {
     int p1=line.indexOf('(')+1; int p2=line.indexOf(';');
     int p3=line.indexOf(';', p2+1); int p4=line.indexOf(')');
     String init = line.substring(p1,p2); init.trim();
@@ -190,13 +213,13 @@ void ignoreLine(String line, int& pc) {
   if (line.length() == 0) return;
 
   // If this line introduces a block, skip the entire block
-  if (line.startsWith("if(") || line.startsWith("else if(") || line.startsWith("else")) {
+  if (startsWithKeyword(line, "if") || startsWithKeyword(line, "else if") || startsWithKeyword(line, "else")) {
     Block b = getFollowingBlock(pc);
     pc = b.after - 1;
     return;
   }
 
-  if (line.startsWith("while(") || line.startsWith("for(")) {
+  if (startsWithKeyword(line, "while") || startsWithKeyword(line, "for")) {
     Block b = getFollowingBlock(pc);
     pc = b.after - 1;
     return;
