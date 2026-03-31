@@ -121,7 +121,7 @@ void BME680Sensor::updateSensorData() {
     }
 
     // Alle Sensorwerte aktualisieren
-    cachedTemperature = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE).signal;
+    cachedTemperature = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE).signal - 7 ;
     cachedHumidity = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY).signal;
     cachedPressure = bme680.getData(BSEC_OUTPUT_RAW_PRESSURE).signal;
     cachedIaq = bme680.getData(BSEC_OUTPUT_IAQ).signal;

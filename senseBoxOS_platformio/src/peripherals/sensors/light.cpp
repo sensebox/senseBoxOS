@@ -16,7 +16,8 @@ bool LightSensor::begin() {
 
 float LightSensor::readMeasurement(const String& measurementType) {
 	if (measurementType == "light") {
-		return analogRead(PD_SENSE);
+		float value = analogRead(PD_SENSE);
+		return (value < 30) ? 0 : value;
 	}
 	return ERROR_MEASUREMENT_NOT_SUPPORTED;
 }
