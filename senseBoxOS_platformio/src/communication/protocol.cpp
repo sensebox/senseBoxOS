@@ -1,5 +1,6 @@
 #include "communication/protocol.h"
 #include "helpers/interpreter.h"
+#include "peripherals/display.h"
 
 // This file provides the base implementation for communication protocols
 // Individual implementations will inherit from this interface
@@ -92,6 +93,8 @@ void CommandBuffer::handleControlCommand(const String& cmd) {
             Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
         }
         Serial.println("======================================");
+        clearDisplay();
+        resetDisplayTextY();
         runningScript = true;
         runForever = false;
         runScript();
@@ -118,6 +121,8 @@ void CommandBuffer::handleControlCommand(const String& cmd) {
             Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
         }
         Serial.println("=============================================");
+        clearDisplay();
+        resetDisplayTextY();
         runningScript = true;
         runForever = true;
         runScript();

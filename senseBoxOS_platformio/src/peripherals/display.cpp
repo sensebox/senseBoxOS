@@ -234,7 +234,13 @@ void displayMeasurement(float value, const String& sensorName, const String& uni
   oled.clearDisplay();
   
   // Format value with requested decimal places
-  String valueStr = String(value, decimals);
+  // Special handling for zero when decimals=0 to avoid "0.000" display
+  String valueStr;
+  if (decimals == 0 && value < 0.5) {
+    valueStr = "0";
+  } else {
+    valueStr = String(value, decimals);
+  }
   String valueWithUnit = valueStr + " " + utf8ToCP437(unit);
   
   // Calculate dimensions for value+unit (larger text, size 2)
