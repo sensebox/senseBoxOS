@@ -85,7 +85,14 @@ void displayNumber(float value) {
   oled.setTextSize(1);
   oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
   oled.setCursor(0, displayTextY);
-  oled.println(value);
+  
+  // Smart formatting: show no decimals for whole numbers
+  if (value == (int)value) {
+    oled.println((int)value);
+  } else {
+    oled.println(value);
+  }
+  
   oled.display();
 
 }
@@ -215,8 +222,8 @@ void displaySerialOnlyMode() {
   
   // Instructions - centered
   oled.setTextSize(1);
-  String line1 = utf8ToCP437("Code über USB");
-  String line2 = utf8ToCP437("hochladen");
+  String line1 = utf8ToCP437("Verbinde dich");
+  String line2 = utf8ToCP437("per PC (USB)");
   
   oled.getTextBounds(line1, 0, 0, &x1, &y1, &w, &h);
   oled.setCursor((128 - w) / 2, 36);
@@ -234,10 +241,14 @@ void displayMeasurement(float value, const String& sensorName, const String& uni
   oled.clearDisplay();
   
   // Format value with requested decimal places
-  // Special handling for zero when decimals=0 to avoid "0.000" display
+  // Smart formatting: if value is a whole number and decimals=0, show without decimals
   String valueStr;
-  if (decimals == 0 && value < 0.5) {
-    valueStr = "0";
+  if (decimals == 0) {
+    // For integer display mode, round and show as integer
+    valueStr = String((int)round(value));
+  } else if (value == (int)value) {
+    // If value is whole number, show without decimals regardless of decimals setting
+    valueStr = String((int)value);
   } else {
     valueStr = String(value, decimals);
   }

@@ -39,17 +39,21 @@ void setup() {
   initButton();
   Wire.begin();
 
-  // Initialize BLE first (to detect if BLE module is present)
+  // Show startup message immediately (assume no BLE for fastest feedback)
+  Serial.println("Showing initial display message...");
+  displaySerialOnlyMode();
+
+  // Initialize BLE (to detect if BLE module is present)
   bleModule.setup();
   
-  // Display appropriate startup screen based on BLE availability
+  // Update display if BLE is available
   if (bleModule.isAvailable()) {
     String cachedId = getDeviceID();
     displayDeviceID();
     delay(2000);  // Show ID for 2 seconds
   } else {
-    Serial.println("BLE not available - showing Serial-Only mode");
-    displaySerialOnlyMode();
+    // BLE not available - keep the Serial-Only message
+    Serial.println("BLE not available - keeping Serial-Only mode message");
     delay(2000);  // Show message for 2 seconds
   }
 
