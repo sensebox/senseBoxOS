@@ -18,7 +18,7 @@ CommandBuffer commandBuffer;
 static const char* knownCommands[] = {
   "led(", "delay(", "display(", "clearDisplay(", "displayMeasurement(",
   "if(", "while(", "for(", "else", "}", 
-  "sensor:", "buttonPressed(", "lightBoard=sensor:board:light", NULL
+  "sensor:", "buttonPressed(", "random(", "lightBoard=sensor:board:light", NULL
 };
 
 // ===== CommandBuffer Implementation =====

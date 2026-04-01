@@ -244,8 +244,8 @@ void displayMeasurement(float value, const String& sensorName, const String& uni
   // Smart formatting: if value is a whole number and decimals=0, show without decimals
   String valueStr;
   if (decimals == 0) {
-    // For integer display mode, round and show as integer
-    valueStr = String((int)round(value));
+    // For integer display mode, truncate decimals (don't round)
+    valueStr = String((int)value);
   } else if (value == (int)value) {
     // If value is whole number, show without decimals regardless of decimals setting
     valueStr = String((int)value);

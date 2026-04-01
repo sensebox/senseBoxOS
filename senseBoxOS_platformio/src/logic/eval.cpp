@@ -28,6 +28,39 @@ float evalNumber(String expr) {
     return shaken ? 1.0 : 0.0;
   }
   
+  // Check for random(from, to) function
+  if (expr.startsWith("random(") && expr.endsWith(")")) {
+    int startPos = expr.indexOf('(') + 1;
+    int endPos = expr.indexOf(')');
+    String argsStr = expr.substring(startPos, endPos);
+    argsStr.trim();
+    
+    // Find comma to split arguments
+    int commaPos = argsStr.indexOf(',');
+    if (commaPos == -1) {
+      Serial.println("Error: random() requires 2 arguments: from, to");
+      return 0;
+    }
+    
+    String fromStr = argsStr.substring(0, commaPos);
+    String toStr = argsStr.substring(commaPos + 1);
+    fromStr.trim();
+    toStr.trim();
+    
+    int from = evalNumber(fromStr);
+    int to = evalNumber(toStr);
+    
+    // Ensure from <= to
+    if (from > to) {
+      int temp = from;
+      from = to;
+      to = temp;
+    }
+    
+    // Generate random number between from and to (inclusive)
+    return random(from, to + 1);
+  }
+  
   // Check for buttonPressed(pin) function
   if (expr.startsWith("buttonPressed(") && expr.endsWith(")")) {
     int startPos = expr.indexOf('(') + 1;
