@@ -19,8 +19,10 @@
 #include "peripherals/button.h"
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
+#include "peripherals/sensors/light.h"
 
 BME680Sensor BME680Sensor;
+LightSensor lightSensor;
 
 void setup() {
   serialModule.setup();
@@ -34,6 +36,12 @@ void setup() {
     sensorRegistry.registerSensor("bme680", &BME680Sensor);
   } else {
     Serial.println("BME680 not available - sensor not registered");
+  }
+  
+  // Initialize and register light sensor
+  if (lightSensor.begin()) {
+    sensorRegistry.registerSensor("board", &lightSensor);
+    Serial.println("Light sensor registered as 'board'");
   }
 
   initButton();
