@@ -14,26 +14,12 @@ void SensorRegistry::registerSensor(const String& sensorType, Sensor* sensor) {
 }
 
 float SensorRegistry::readSensor(const String& sensorType, const String& measurement) {
-    // Initialize sensor on-demand
+    // Check if sensor is already registered
     auto it = sensors.find(sensorType);
     if (it == sensors.end()) {
-        Sensor* sensor = nullptr;
-        
-        if (sensorType == "hdc1080") {
-            sensor = new HDC1080Sensor();
-        } else if (sensorType == "bme680") {
-            sensor = new BME680Sensor();
-        } else if (sensorType == "accelerometer") {
-            sensor = new AccelerometerSensor();
-        } else if (sensorType == "board") {
-            sensor = new LightSensor();
-        }
-        
-        if (sensor == nullptr) {
-            return ERROR_SENSOR_NOT_FOUND;
-        }
-        
-        sensors[sensorType] = sensor;
+        // Sensor not found in registry
+        Serial.printf("[SensorRegistry] Sensor '%s' not registered\n", sensorType.c_str());
+        return ERROR_SENSOR_NOT_FOUND;
     }
     
     return sensors[sensorType]->readValue(measurement);

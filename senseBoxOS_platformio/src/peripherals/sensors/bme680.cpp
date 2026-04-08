@@ -89,38 +89,44 @@ bool BME680Sensor::begin() {
         return false;
     }
     
+    // Initialize cached values with current readings
+    cachedTemperature = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE).signal - 7;
+    cachedHumidity = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY).signal;
+    cachedPressure = bme680.getData(BSEC_OUTPUT_RAW_PRESSURE).signal;
+    cachedIaq = iaq;
+    cachedCo2eq = co2eq;
+    dataValid = true;
+    
     sensorAvailable = true;
     Serial.println("[BME680] Sensor detected and initialized");
+    Serial.printf("[BME680] Initial values - Temp: %.1f°C, Humidity: %.1f%%, IAQ: %.0f\n", 
+                  cachedTemperature, cachedHumidity, cachedIaq);
     return true;
 }
 
 void BME680Sensor::updateSensorData() {
     // Skip if sensor not available
-    if (!sensorAvailable) return;
-    
-    // Prüfe, ob genug Zeit seit dem letzten Update vergangen ist
-    unsigned long currentTime = millis();
-    if (currentTime - lastUpdateTime < updateInterval) {
-        // Zu früh für ein Update, überspringe
+    if (!sensorAvailable) {
         return;
     }
-    
-    lastUpdateTime = currentTime;
     
     // Rufe bme680.run() auf um neue Daten zu bekommen
-    if (!bme680.run()) {
-        Serial.println("BME680: bme680.run() returned false");
+    // WICHTIG: run() muss häufig aufgerufen werden, auch wenn es false zurückgibt
+    bool hasNewData = bme680.run();
+    
+    // Prüfe ob neue Daten verfügbar sind
+    if (!hasNewData) {
+        // Keine neuen Daten, aber das ist OK - behalte gecachte Werte
         return;
     }
     
-    // Prüfe ob neue Daten verfügbar sind
+    // Prüfe BSEC Status
     if (bme680.status != BSEC_OK) {
-        Serial.println("BME680: BSEC status not OK: " + String(bme680.status));
         dataValid = false;
         return;
     }
 
-    // Alle Sensorwerte aktualisieren
+    // Neue Daten verfügbar - alle Sensorwerte aktualisieren
     cachedTemperature = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE).signal - 7 ;
     cachedHumidity = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY).signal;
     cachedPressure = bme680.getData(BSEC_OUTPUT_RAW_PRESSURE).signal;
@@ -154,7 +160,6 @@ void BME680Sensor::updateSensorData() {
         logError(ERROR_SENSOR_READ_FAILED, "BME680: CO2eq out of range: " + String(cachedCo2eq));
         dataValid = false;
     }
-
 }
 
 float BME680Sensor::readMeasurement(const String& measurementType) {

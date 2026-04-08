@@ -238,8 +238,15 @@ void runScript() {
       String line = scriptLines[pc];
       executeLine(line, pc);
       pc++;
+      
+      // Non-blocking delay that still allows sensor updates
       if (lineDelay > 0) {
-        delay(lineDelay);
+        unsigned long startDelay = millis();
+        while (millis() - startDelay < lineDelay && runningScript) {
+          pumpControl();
+          delay(1);
+          yield();
+        }
       }
       yield();
     }

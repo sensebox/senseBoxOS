@@ -327,9 +327,17 @@ void CommandBuffer::processChar(char c) {
             String beforeControl = buffer.substring(0, buffer.length() - controlWordLen);
             beforeControl.trim();
             
-            // Add what was before to script if not empty
+            // Add what was before to script only if it's a valid command
+            // (contains '=' for assignment or '(' for function call, or starts with known command)
             if (beforeControl.length() > 0) {
-                addScriptLine(beforeControl);
+                if (beforeControl.indexOf('=') >= 0 || 
+                    beforeControl.indexOf('(') >= 0 || 
+                    startsWithKnownCommand(beforeControl)) {
+                    addScriptLine(beforeControl);
+                } else {
+                    Serial.printf("[CMD] Ignoring invalid fragment before control word: \"%s\"\n", 
+                                 beforeControl.c_str());
+                }
             }
             
             // Now flush with just the control word

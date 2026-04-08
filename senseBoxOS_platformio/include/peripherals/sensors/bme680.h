@@ -34,8 +34,4 @@ private:
     float cachedCo2eq = 0.0f;
     bool dataValid = false;
     bool sensorAvailable = false;
-    
-    // Zeitsteuerung für Updates
-    unsigned long lastUpdateTime = 0;
-    static const unsigned long updateInterval = 1000; // 3 Sekunden zwischen Updates
 };
