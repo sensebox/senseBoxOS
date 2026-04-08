@@ -112,7 +112,6 @@ void BME680Sensor::updateSensorData() {
     
     unsigned long now = millis();
     if (now - lastDebug > 3000) {
-        Serial.printf("[BME680] updateSensorData called %lu times, bme680.run() succeeded %lu times in last 3s\n", callCount, successCount);
         callCount = 0;
         successCount = 0;
         lastDebug = now;
@@ -178,10 +177,7 @@ void BME680Sensor::updateSensorData() {
         dataValid = false;
     }
     
-    if (dataValid) {
-        Serial.printf("[BME680] NEW DATA - Temp: %.1f°C, Hum: %.1f%%, IAQ: %.0f\n", 
-                      cachedTemperature, cachedHumidity, cachedIaq);
-    }
+
 }
 
 float BME680Sensor::readMeasurement(const String& measurementType) {
