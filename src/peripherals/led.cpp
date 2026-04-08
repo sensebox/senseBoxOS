@@ -1,0 +1,41 @@
+#include "peripherals/led.h"
+#include "logic/eval.h"
+
+Adafruit_NeoPixel rgb_led_1 = Adafruit_NeoPixel(1, 1, NEO_GRB + NEO_KHZ800);
+
+void initLedRGB() {
+  rgb_led_1.begin();
+  rgb_led_1.setBrightness(30);
+  rgb_led_1.show();
+}
+
+void setLedRGB(int r, int g, int b) {
+  rgb_led_1.setPixelColor(0, rgb_led_1.Color(r, g, b));
+  rgb_led_1.show();
+}
+
+void randomLed() {
+  rgb_led_1.setPixelColor(0, rgb_led_1.Color(random(0, 255), random(0, 255), random(0, 255)));
+  rgb_led_1.show();
+}
+
+void handleRandomLed(String args) {
+  randomLed();
+}
+
+void handleLed(String args) {
+  args.trim();
+  if (args.indexOf(',') != -1) {
+    int c1 = args.indexOf(',');
+    int c2 = args.indexOf(',', c1 + 1);
+    int r = (int)evalNumber(args.substring(0, c1));
+    int g = (int)evalNumber(args.substring(c1 + 1, c2));
+    int b = (int)evalNumber(args.substring(c2 + 1));
+    setLedRGB(r, g, b);
+  } else {
+    args.toLowerCase();
+    if (args == "on") setLedRGB(255, 0, 0);
+    else if (args == "off") setLedRGB(0, 0, 0);
+    else;
+  }
+}
