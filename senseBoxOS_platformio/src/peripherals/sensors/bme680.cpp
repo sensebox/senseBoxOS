@@ -105,6 +105,19 @@ bool BME680Sensor::begin() {
 }
 
 void BME680Sensor::updateSensorData() {
+    static unsigned long callCount = 0;
+    static unsigned long lastDebug = 0;
+    static unsigned long successCount = 0;
+    callCount++;
+    
+    unsigned long now = millis();
+    if (now - lastDebug > 3000) {
+        Serial.printf("[BME680] updateSensorData called %lu times, bme680.run() succeeded %lu times in last 3s\n", callCount, successCount);
+        callCount = 0;
+        successCount = 0;
+        lastDebug = now;
+    }
+    
     // Skip if sensor not available
     if (!sensorAvailable) {
         return;
@@ -113,6 +126,10 @@ void BME680Sensor::updateSensorData() {
     // Rufe bme680.run() auf um neue Daten zu bekommen
     // WICHTIG: run() muss häufig aufgerufen werden, auch wenn es false zurückgibt
     bool hasNewData = bme680.run();
+    
+    if (hasNewData) {
+        successCount++;
+    }
     
     // Prüfe ob neue Daten verfügbar sind
     if (!hasNewData) {
@@ -159,6 +176,11 @@ void BME680Sensor::updateSensorData() {
     if (cachedCo2eq < 250.0f || cachedCo2eq > 5000.0f) {
         logError(ERROR_SENSOR_READ_FAILED, "BME680: CO2eq out of range: " + String(cachedCo2eq));
         dataValid = false;
+    }
+    
+    if (dataValid) {
+        Serial.printf("[BME680] NEW DATA - Temp: %.1f°C, Hum: %.1f%%, IAQ: %.0f\n", 
+                      cachedTemperature, cachedHumidity, cachedIaq);
     }
 }
 

@@ -62,6 +62,13 @@ std::vector<String> SensorRegistry::getSupportedMeasurements(const String& senso
 }
 
 void SensorRegistry::pollSensors() {
+    static unsigned long lastDebug = 0;
+    unsigned long now = millis();
+    if (now - lastDebug > 3000) {
+        Serial.printf("[Registry] Polling %d sensors\n", sensors.size());
+        lastDebug = now;
+    }
+    
     for (auto &pair : sensors) {
         Sensor* s = pair.second;
         if (s != nullptr) {
