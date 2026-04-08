@@ -9,6 +9,7 @@ extern std::map<String, float> variables;
 extern std::vector<String> scriptLines;
 extern bool runningScript;
 extern bool runForever;   // LOOP mode
+extern unsigned int lineDelay;  // Delay in ms between lines
 extern SensorRegistry sensorRegistry;
 
 void executeLine(String line, int& pc);

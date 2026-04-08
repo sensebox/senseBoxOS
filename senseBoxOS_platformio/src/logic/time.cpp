@@ -13,3 +13,10 @@ void handleDelay(String args) {
     yield();
   }
 }
+
+void handleSetLineDelay(String args) {
+  args.trim();
+  long ms = (long)evalNumber(args);
+  if (ms < 0) ms = 0;
+  lineDelay = (unsigned int)ms;
+}

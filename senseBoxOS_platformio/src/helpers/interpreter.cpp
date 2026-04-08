@@ -14,6 +14,7 @@ std::map<String, float> variables;
 std::vector<String> scriptLines;
 bool runningScript = false;
 bool runForever = false;   // LOOP mode
+unsigned int lineDelay = 200;  // Delay in ms between lines (default: 200ms)
 
 // Helper function to check if a line starts with a keyword (with optional space before '(')
 bool startsWithKeyword(const String& line, const String& keyword) {
@@ -237,6 +238,9 @@ void runScript() {
       String line = scriptLines[pc];
       executeLine(line, pc);
       pc++;
+      if (lineDelay > 0) {
+        delay(lineDelay);
+      }
       yield();
     }
     pumpControl();

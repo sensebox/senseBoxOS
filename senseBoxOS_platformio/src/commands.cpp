@@ -32,5 +32,6 @@ void setupCommandMap() {
   commandMap["led"]     = handleLed;
   commandMap["randomLed"] = handleRandomLed;
   commandMap["delay"]   = handleDelay;
+  commandMap["setLineDelay"] = handleSetLineDelay;
   commandMap["sensor"]  = handleSensorCommand;
 }
