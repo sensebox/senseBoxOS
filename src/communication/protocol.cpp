@@ -1,6 +1,7 @@
 #include "communication/protocol.h"
 #include "helpers/interpreter.h"
 #include "peripherals/display.h"
+#include "peripherals/led.h"
 
 // This file provides the base implementation for communication protocols
 // Individual implementations will inherit from this interface
@@ -95,6 +96,7 @@ void CommandBuffer::handleControlCommand(const String& cmd) {
         Serial.println("======================================");
         clearDisplay();
         resetDisplayTextY();
+        setLedRGB(0, 0, 0);
         runningScript = true;
         runForever = false;
         runScript();
@@ -123,6 +125,7 @@ void CommandBuffer::handleControlCommand(const String& cmd) {
         Serial.println("=============================================");
         clearDisplay();
         resetDisplayTextY();
+        setLedRGB(0, 0, 0);
         runningScript = true;
         runForever = true;
         runScript();
