@@ -77,7 +77,16 @@ void runBlock(int start, int end) {
     String body = scriptLines[lineIndex]; body.trim();
     executeLine(body, lineIndex);
     lineIndex++;
-    pumpControl(); 
+    pumpControl();
     if (!runningScript) break;
+    if (lineDelay > 0) {
+      unsigned long startDelay = millis();
+      while (millis() - startDelay < lineDelay && runningScript) {
+        pumpControl();
+        delay(1);
+        yield();
+      }
+    }
+    yield();
   }
 }
