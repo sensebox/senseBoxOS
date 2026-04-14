@@ -38,6 +38,15 @@ bool AccelerometerSensor::begin() {
         Serial.println("ICM42670P Accelerometer initialized");
         return true;
     }
+
+    // If ICM42670P fails, try ICM20948
+    if (icm2.begin_I2C(0x68, &Wire1)) {
+        icm2.setAccelRange(ICM20948_ACCEL_RANGE_8_G);
+        icm2.setAccelRateDivisor(10);
+        activeSensor = ACCEL_ICM20948;
+        Serial.println("ICM20948 Accelerometer initialized");
+        return true;
+    }
     
     Serial.println("No accelerometer sensor found!");
     activeSensor = ACCEL_NONE;
@@ -89,6 +98,10 @@ float AccelerometerSensor::getAccelerationX() {
         inv_imu_sensor_event_t imu_event;
         icm.getDataFromRegisters(imu_event);
         return (imu_event.accel[0] * 9.81) / 4096.0;
+    } else if (activeSensor == ACCEL_ICM20948) {
+        sensors_event_t a, g, m, temp;
+        icm2.getEvent(&a, &g, &m, &temp);
+        return a.acceleration.x;
     }
     return 0.0;
 }
@@ -102,6 +115,10 @@ float AccelerometerSensor::getAccelerationY() {
         inv_imu_sensor_event_t imu_event;
         icm.getDataFromRegisters(imu_event);
         return (imu_event.accel[1] * 9.81) / 4096.0;
+    } else if (activeSensor == ACCEL_ICM20948) {
+        sensors_event_t a, g, m, temp;
+        icm2.getEvent(&a, &g, &m, &temp);
+        return a.acceleration.y;
     }
     return 0.0;
 }
@@ -115,6 +132,10 @@ float AccelerometerSensor::getAccelerationZ() {
         inv_imu_sensor_event_t imu_event;
         icm.getDataFromRegisters(imu_event);
         return (imu_event.accel[2] * 9.81) / 4096.0;
+    } else if (activeSensor == ACCEL_ICM20948) {
+        sensors_event_t a, g, m, temp;
+        icm2.getEvent(&a, &g, &m, &temp);
+        return a.acceleration.z;
     }
     return 0.0;
 }
@@ -128,6 +149,10 @@ float AccelerometerSensor::getTemperature() {
         inv_imu_sensor_event_t imu_event;
         icm.getDataFromRegisters(imu_event);
         return (imu_event.temperature / 132.48) + 25.0;
+    } else if (activeSensor == ACCEL_ICM20948) {
+        sensors_event_t a, g, m, temp;
+        icm2.getEvent(&a, &g, &m, &temp);
+        return temp.temperature;
     }
     return 0.0;
 }

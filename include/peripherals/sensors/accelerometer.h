@@ -2,6 +2,7 @@
 
 #include <Adafruit_MPU6050.h>
 #include "ICM42670P.h"
+#include <Adafruit_ICM20948.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include "sensor.h"
@@ -9,7 +10,8 @@
 enum AccelSensorType {
     ACCEL_NONE = 0,
     ACCEL_MPU6050 = 1,
-    ACCEL_ICM42670P = 2
+    ACCEL_ICM42670P = 2,
+    ACCEL_ICM20948 = 3
 };
 
 class AccelerometerSensor : public BaseSensor {
@@ -29,6 +31,7 @@ protected:
 private:
     Adafruit_MPU6050 mpu;
     ICM42670 icm;
+    Adafruit_ICM20948 icm2;
 
     AccelSensorType activeSensor;
     
