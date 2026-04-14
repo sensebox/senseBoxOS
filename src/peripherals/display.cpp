@@ -73,18 +73,18 @@ void clearDisplay() {
 
 
 static int displayTextY = 0;
-void displayText(const String& text) {
+void displayText(const String& text, uint8_t textSize) {
   initDisplay();
-  oled.setTextSize(1);
+  oled.setTextSize(textSize);
   oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
   oled.setCursor(0, displayTextY);
   oled.println(utf8ToCP437(text));
   oled.display();
 }
 
-void displayNumber(float value) {
+void displayNumber(float value, uint8_t textSize) {
   initDisplay();
-  oled.setTextSize(1);
+  oled.setTextSize(textSize);
   oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
   oled.setCursor(0, displayTextY);
   
@@ -115,19 +115,43 @@ void handleClearDisplay(String args) {
 
 
 void handleDisplay(String args) {
-  // increae y counter every time we call handleDisplay
-  displayTextY += 14;
   args.trim();
+
+  // Parse optional size parameter: DISPLAY "text", S|M|L
+  uint8_t textSize = 1; // default: S
+  int commaPos = -1;
+
+  // Find comma outside of quotes
+  if (args.startsWith("\"")) {
+    int closeQuote = args.indexOf('"', 1);
+    if (closeQuote != -1) {
+      commaPos = args.indexOf(',', closeQuote + 1);
+    }
+  } else {
+    commaPos = args.indexOf(',');
+  }
+
+  if (commaPos != -1) {
+    String sizeArg = args.substring(commaPos + 1);
+    sizeArg.trim();
+    sizeArg.toUpperCase();
+    if (sizeArg == "M") textSize = 2;
+    else if (sizeArg == "L") textSize = 3;
+    args = args.substring(0, commaPos);
+    args.trim();
+  }
+
+  // Increase y counter based on text size
+  displayTextY += 8 * textSize + 2;
+
   if (args.startsWith("\"") && args.endsWith("\"")) {
     String inside = args.substring(1, args.length() - 1);
-    displayText(inside);
+    displayText(inside, textSize);
     return;
   }
   // Ansonsten: Zahl evaluieren
   float num = evalNumber(args);
-  displayNumber(num);
-
-
+  displayNumber(num, textSize);
 }
 
 // Global device ID variable

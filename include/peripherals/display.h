@@ -10,10 +10,10 @@ extern Adafruit_SSD1306 oled;
 extern bool oledInitialized;
 
 void initDisplay();
-void  displayNumber(float value);
+void  displayNumber(float value, uint8_t textSize = 1);
 void clearDisplay();
 void handleDisplay(String args);
-void displayText(const String& text);
+void displayText(const String& text, uint8_t textSize = 1);
 void resetDisplayTextY();
 void handleClearDisplay(String args);
 String getDeviceID();
