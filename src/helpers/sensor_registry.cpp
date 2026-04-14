@@ -65,7 +65,6 @@ void SensorRegistry::pollSensors() {
     static unsigned long lastDebug = 0;
     unsigned long now = millis();
     if (now - lastDebug > 3000) {
-        Serial.printf("[Registry] Polling %d sensors\n", sensors.size());
         lastDebug = now;
     }
     
