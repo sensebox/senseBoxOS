@@ -147,6 +147,7 @@ void CommandBuffer::addScriptLine(const String& line) {
     
     String cleaned = cleanLine(line);
     if (cleaned.length() > 0) {
+
         scriptLines.push_back(cleaned);
         Serial.printf("[CMD] Added line: \"%s\"\n", cleaned.c_str());
     }
@@ -325,7 +326,8 @@ void CommandBuffer::processChar(char c) {
         if (controlWordLen > 0) {
             Serial.printf("[CMD] Control word '%s' detected at end of buffer\n", 
                          controlWord.c_str());
-            
+            clearDisplay();
+            resetDisplayTextY();
             // Extract everything before the control word
             String beforeControl = buffer.substring(0, buffer.length() - controlWordLen);
             beforeControl.trim();

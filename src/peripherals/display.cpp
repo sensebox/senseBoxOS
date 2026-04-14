@@ -66,6 +66,8 @@ void initDisplay() {
 void clearDisplay() {
   if (oledInitialized) {
     oled.clearDisplay();
+      oled.display();
+
   }
 }
 
