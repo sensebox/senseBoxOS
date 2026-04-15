@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef SENSEBOX_OS_VERSION
+  #define SENSEBOX_OS_VERSION "0.0.0"
+#endif
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
@@ -10,7 +13,7 @@ extern Adafruit_SSD1306 oled;
 extern bool oledInitialized;
 
 void initDisplay();
-void  displayNumber(float value, uint8_t textSize = 1);
+void  displayNumber(float value, uint8_t textSize = 1, const String& unit = "");
 void clearDisplay();
 void handleDisplay(String args);
 void displayText(const String& text, uint8_t textSize = 1);

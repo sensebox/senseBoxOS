@@ -82,18 +82,21 @@ void displayText(const String& text, uint8_t textSize) {
   oled.display();
 }
 
-void displayNumber(float value, uint8_t textSize) {
+void displayNumber(float value, uint8_t textSize, const String& unit) {
   initDisplay();
   oled.setTextSize(textSize);
   oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
   oled.setCursor(0, displayTextY);
   
   // Smart formatting: show no decimals for whole numbers
+  String out;
   if (value == (int)value) {
-    oled.println((int)value);
+    out = String((int)value);
   } else {
-    oled.println(value);
+    out = String(value);
   }
+  if (unit.length() > 0) out += unit;
+  oled.println(out);
   
   oled.display();
 
@@ -113,6 +116,18 @@ void handleClearDisplay(String args) {
 }
 
 
+
+// Returns the display unit for a known sensor measurement type
+static String getSensorUnit(const String& expr) {
+  // expr format: sensor:type:measurement
+  int lastColon = expr.lastIndexOf(':');
+  if (lastColon == -1) return "";
+  String measurement = expr.substring(lastColon + 1);
+  measurement.toLowerCase();
+  if (measurement == "temperature") return String((char)0xF8) + "C"; // °C in CP437
+  if (measurement == "humidity")    return "%";
+  return "";
+}
 
 void handleDisplay(String args) {
   args.trim();
@@ -150,8 +165,10 @@ void handleDisplay(String args) {
     return;
   }
   // Ansonsten: Zahl evaluieren
+  String unit = "";
+  if (args.startsWith("sensor:")) unit = getSensorUnit(args);
   float num = evalNumber(args);
-  displayNumber(num, textSize);
+  displayNumber(num, textSize, unit);
 }
 
 // Global device ID variable
@@ -221,6 +238,13 @@ void displayDeviceID() {
   oled.getTextBounds(instruction, 0, 0, &x1, &y1, &w, &h);
   oled.setCursor((128 - w) / 2, 54);
   oled.println(instruction);
+
+  // Version top-right corner
+  oled.setTextSize(1);
+  String version = "v" SENSEBOX_OS_VERSION;
+  oled.getTextBounds(version, 0, 0, &x1, &y1, &w, &h);
+  oled.setCursor(128 - w, 0);
+  oled.println(version);
   
   oled.display();
 }
@@ -258,6 +282,13 @@ void displaySerialOnlyMode() {
   oled.getTextBounds(line2, 0, 0, &x1, &y1, &w, &h);
   oled.setCursor((128 - w) / 2, 46);
   oled.println(line2);
+
+  // Version top-right corner
+  oled.setTextSize(1);
+  String version = "v" SENSEBOX_OS_VERSION;
+  oled.getTextBounds(version, 0, 0, &x1, &y1, &w, &h);
+  oled.setCursor(128 - w, 0);
+  oled.println(version);
   
   oled.display();
 }
