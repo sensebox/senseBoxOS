@@ -13,7 +13,7 @@ extern Adafruit_SSD1306 oled;
 extern bool oledInitialized;
 
 void initDisplay();
-void  displayNumber(float value, uint8_t textSize = 1, const String& unit = "");
+void  displayNumber(float value, uint8_t textSize = 1);
 void clearDisplay();
 void handleDisplay(String args);
 void displayText(const String& text, uint8_t textSize = 1);

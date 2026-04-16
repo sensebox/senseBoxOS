@@ -6,13 +6,16 @@
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 bool oledInitialized = false;
 
+
+
 // Helper: Convert UTF-8 string to CP437 for Adafruit GFX display
 // CP437 contains German umlauts: ä=0x84, Ä=0x8E, ö=0x94, Ö=0x99, ü=0x81, Ü=0x9A, ß=0xE1
+// Supports /xHH escape sequences (e.g. /x84 → CP437 byte 0x84 = ä)
 String utf8ToCP437(const String& utf8) {
   String result = "";
   for (int i = 0; i < utf8.length(); i++) {
     uint8_t c = utf8[i];
-    
+
     // Check for UTF-8 multi-byte sequences
     if ((c & 0x80) == 0) {
       // ASCII character (0x00-0x7F) - pass through
@@ -82,7 +85,7 @@ void displayText(const String& text, uint8_t textSize) {
   oled.display();
 }
 
-void displayNumber(float value, uint8_t textSize, const String& unit) {
+void displayNumber(float value, uint8_t textSize) {
   initDisplay();
   oled.setTextSize(textSize);
   oled.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
@@ -91,12 +94,11 @@ void displayNumber(float value, uint8_t textSize, const String& unit) {
   // Smart formatting: show no decimals for whole numbers
   String out;
   if (value == (int)value) {
-    out = String((int)value);
+    oled.println((int)value);
   } else {
-    out = String(value);
+    oled.println(value);
   }
-  if (unit.length() > 0) out += unit;
-  oled.println(out);
+
   
   oled.display();
 
@@ -117,17 +119,7 @@ void handleClearDisplay(String args) {
 
 
 
-// Returns the display unit for a known sensor measurement type
-static String getSensorUnit(const String& expr) {
-  // expr format: sensor:type:measurement
-  int lastColon = expr.lastIndexOf(':');
-  if (lastColon == -1) return "";
-  String measurement = expr.substring(lastColon + 1);
-  measurement.toLowerCase();
-  if (measurement == "temperature") return String((char)0xF8) + "C"; // °C in CP437
-  if (measurement == "humidity")    return "%";
-  return "";
-}
+
 
 void handleDisplay(String args) {
   args.trim();
@@ -165,10 +157,8 @@ void handleDisplay(String args) {
     return;
   }
   // Ansonsten: Zahl evaluieren
-  String unit = "";
-  if (args.startsWith("sensor:")) unit = getSensorUnit(args);
   float num = evalNumber(args);
-  displayNumber(num, textSize, unit);
+  displayNumber((float)num, textSize);  
 }
 
 // Global device ID variable
