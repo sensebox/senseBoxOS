@@ -128,14 +128,23 @@ void handleDisplay(String args) {
   uint8_t textSize = 1; // default: S
   int commaPos = -1;
 
-  // Find comma outside of quotes
+  // Find comma outside of quotes and parentheses
   if (args.startsWith("\"")) {
     int closeQuote = args.indexOf('"', 1);
     if (closeQuote != -1) {
       commaPos = args.indexOf(',', closeQuote + 1);
     }
   } else {
-    commaPos = args.indexOf(',');
+    // Find comma at top level (not inside parentheses)
+    int depth = 0;
+    for (int i = 0; i < args.length(); i++) {
+      if (args[i] == '(') depth++;
+      else if (args[i] == ')') depth--;
+      else if (args[i] == ',' && depth == 0) {
+        commaPos = i;
+        break;
+      }
+    }
   }
 
   if (commaPos != -1) {
