@@ -2,6 +2,7 @@
 #include "helpers/block.h"
 #include "helpers/command_parser.h"
 #include "helpers/sensor_registry.h"
+#include "helpers/script_parser.h"
 #include "logic/eval.h"
 #include "logic/var.h"
 #include "commands.h"
@@ -10,11 +11,15 @@
 #include "peripherals/display.h"
 // TODO: including everything here seems suboptimal
 
-std::map<String, float> variables;
-std::vector<String> scriptLines;
+std::vector<String> scriptLines;        // Legacy: combined (used for block parsing)
+std::vector<String> setupLines;         // New: setup block only
+std::vector<String> loopLines;          // New: loop block only
+bool hasSetup = false;                  // Flag if setup block exists
+bool hasLoop = false;                   // Flag if loop block exists
+bool setupExecuted = false;             // Flag if setup has been run
 bool runningScript = false;
-bool runForever = false;   // LOOP mode
-unsigned int lineDelay = 200;  // Delay in ms between lines (default: 200ms)
+bool runForever = false;                // LOOP mode
+unsigned int lineDelay = 200;           // Delay in ms between lines (default: 200ms)
 
 // Helper function to check if a line starts with a keyword (with optional space before '(')
 bool startsWithKeyword(const String& line, const String& keyword) {
@@ -181,15 +186,21 @@ void executeLine(String line, int& pc) {
   int paren = line.indexOf('(');
   int eq    = line.indexOf('=');
 
-  if (paren != -1 && line.endsWith(")")) {
-    String cmd  = line.substring(0, paren); cmd.trim();
-    String args = line.substring(paren + 1, line.length()-1);
-    if (commandMap.count(cmd)) { commandMap[cmd](args); return; }
-  } else if (eq != -1) {
+  // Check for assignment first (var = expression)
+  // An assignment has '=' before any '(', or has '=' but no '('
+  if (eq != -1 && (paren == -1 || eq < paren)) {
+    // It's an assignment
     String var = line.substring(0, eq); var.trim();
     String val = line.substring(eq + 1); val.trim();
     
-    if (isSensorCommand(val)) {
+    Serial.printf("[INTERP] Assignment: var='%s', val='%s'\n", var.c_str(), val.c_str());
+    
+    // Check if value is a string literal (quoted)
+    if (val.startsWith("\"") && val.endsWith("\"")) {
+      // It's a string - store as string
+      String stringValue = val.substring(1, val.length() - 1);
+      setVar(var, stringValue);
+    } else if (isSensorCommand(val)) {
       SensorCommand cmd = parseSensorCommand(val);
       if (cmd.isValid) {
         float sensorValue = sensorRegistry.readSensor(cmd.sensorType, cmd.measurement);
@@ -198,9 +209,16 @@ void executeLine(String line, int& pc) {
         setVar(var, cmd.errorCode);
       }
     } else {
+      // Evaluate as number (includes functions like random(), etc.)
       setVar(var, evalNumber(val));
     }
     return;
+  }
+  // Check for function call (cmd(...))
+  else if (paren != -1 && line.endsWith(")")) {
+    String cmd  = line.substring(0, paren); cmd.trim();
+    String args = line.substring(paren + 1, line.length()-1);
+    if (commandMap.count(cmd)) { commandMap[cmd](args); return; }
   }
 
   // Unknown commands are ignored: skip this line or any following block
@@ -230,29 +248,82 @@ void ignoreLine(String line, int& pc) {
 }
 
 void runScript() {
-  do {
-    resetDisplayTextY();
-    int pc = 0;
-    while (pc < (int)scriptLines.size() && runningScript) {
+  // Execute setup block once (if it exists)
+  if (hasSetup && !setupExecuted) {
+    Serial.println("[SCRIPT] Executing SETUP block...");
+    runSetupBlock();
+    setupExecuted = true;
+  }
+  
+  // Execute loop block (once for RUN, repeatedly for LOOP)
+  if (hasLoop) {
+    do {
+      Serial.println("[SCRIPT] Executing LOOP block...");
+      runLoopBlock();
       pumpControl();
-      String line = scriptLines[pc];
-      executeLine(line, pc);
-      pc++;
-      
-      // Non-blocking delay that still allows sensor updates
-      if (lineDelay > 0) {
-        unsigned long startDelay = millis();
-        while (millis() - startDelay < lineDelay && runningScript) {
-          pumpControl();
-          delay(1);
-          yield();
-        }
-      }
       yield();
-    }
+    } while (runForever && runningScript);
+  }
+  
+  Serial.println("[SCRIPT] Execution complete");
+}
+
+void runSetupBlock() {
+  if (!runningScript) return;
+  
+  // Copy setup lines into scriptLines for block parsing
+  scriptLines.clear();
+  scriptLines = setupLines;
+  
+  resetDisplayTextY();
+  int pc = 0;
+  
+  while (pc < (int)scriptLines.size() && runningScript) {
     pumpControl();
+    String line = scriptLines[pc];
+    executeLine(line, pc);
+    pc++;
+    
+    // Non-blocking delay
+    if (lineDelay > 0) {
+      unsigned long startDelay = millis();
+      while (millis() - startDelay < lineDelay && runningScript) {
+        pumpControl();
+        delay(1);
+        yield();
+      }
+    }
     yield();
-  } while (runForever && runningScript);
+  }
+}
+
+void runLoopBlock() {
+  if (!runningScript) return;
+  
+  // Copy loop lines into scriptLines for block parsing
+  scriptLines.clear();
+  scriptLines = loopLines;
+  
+  resetDisplayTextY();
+  int pc = 0;
+  
+  while (pc < (int)scriptLines.size() && runningScript) {
+    pumpControl();
+    String line = scriptLines[pc];
+    executeLine(line, pc);
+    pc++;
+    
+    // Non-blocking delay
+    if (lineDelay > 0) {
+      unsigned long startDelay = millis();
+      while (millis() - startDelay < lineDelay && runningScript) {
+        pumpControl();
+        delay(1);
+        yield();
+      }
+    }
+    yield();
+  }
 }
 
 // Read control commands while script is running (so STOP works in LOOP)

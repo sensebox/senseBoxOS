@@ -1,7 +1,7 @@
 #include "logic/eval.h"
-#include "helpers/interpreter.h"
 #include "helpers/command_parser.h"
 #include "helpers/sensor_registry.h"
+#include "logic/var.h"
 #include "peripherals/button.h"
 #include "peripherals/sensors/accelerometer.h"
 
@@ -25,6 +25,7 @@ float evalNumber(String expr) {
   // Check for boxShaken() function
     if (expr.startsWith("boxShaken(") && expr.endsWith(")")) {
     bool shaken = isBoxShaken();
+    Serial.printf("[EVAL] Function boxShaken() = %.1f\n", shaken ? 1.0 : 0.0);
     return shaken ? 1.0 : 0.0;
   }
   
@@ -47,8 +48,8 @@ float evalNumber(String expr) {
     fromStr.trim();
     toStr.trim();
     
-    int from = evalNumber(fromStr);
-    int to = evalNumber(toStr);
+    int from = (int)evalNumber(fromStr);
+    int to = (int)evalNumber(toStr);
     
     // Ensure from <= to
     if (from > to) {
@@ -58,7 +59,9 @@ float evalNumber(String expr) {
     }
     
     // Generate random number between from and to (inclusive)
-    return random(from, to + 1);
+    float result = random(from, to + 1);
+    Serial.printf("[EVAL] Function random(%d, %d) = %.0f\n", from, to, result);
+    return result;
   }
   
   // Check for buttonPressed(pin) function
@@ -71,10 +74,11 @@ float evalNumber(String expr) {
     // Default to pin 0 (Boot button on ESP32-S2) if no pin specified
     int pin = 0;
     if (pinStr.length() > 0) {
-      pin = pinStr.toInt();
+      pin = (int)evalNumber(pinStr);
     }
     
     bool pressed = isButtonPressed(pin);
+    Serial.printf("[EVAL] Function buttonPressed(%d) = %.1f\n", pin, pressed ? 1.0 : 0.0);
     return pressed ? 1.0 : 0.0;
   }
   
@@ -102,8 +106,23 @@ float evalNumber(String expr) {
     }
   }
   
-  if (variables.count(expr)) return variables[expr];
-  return expr.toFloat();
+  // Check if it's a variable
+  if (variables.count(expr)) {
+    Variable& var = variables[expr];
+    if (var.type == Variable::TYPE_NUMBER) {
+      Serial.printf("[EVAL] Variable '%s' = %.2f (number)\n", expr.c_str(), var.numberValue);
+      return var.numberValue;
+    } else {
+      // String variable - convert to number
+      float result = var.stringValue.toFloat();
+      Serial.printf("[EVAL] Variable '%s' = %.2f (string \"%s\" converted)\n", expr.c_str(), result, var.stringValue.c_str());
+      return result;
+    }
+  }
+  
+  float numValue = expr.toFloat();
+  Serial.printf("[EVAL] Parsed as number: '%s' = %.2f\n", expr.c_str(), numValue);
+  return numValue;
 }
 
 // Boolean condition evaluator: >, <, >=, <=, ==, !=

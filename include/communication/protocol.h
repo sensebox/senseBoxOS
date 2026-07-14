@@ -54,11 +54,14 @@ private:
     // Check if line starts with a known command
     bool startsWithKnownCommand(const String& line);
     
-    // Handle control commands (RUN, LOOP, STOP)
+    // Handle control commands (STOP)
     void handleControlCommand(const String& cmd);
     
     // Add line to script
     void addScriptLine(const String& line);
+    
+    // Start script execution (called automatically after END_LOOP or on STOP)
+    void startScriptExecution();
 };
 
 extern CommandBuffer commandBuffer;
