@@ -1,5 +1,6 @@
 #include "peripherals/display.h"
 #include "logic/eval.h"
+#include "logic/var.h"
 #include "helpers/command_parser.h"
 #include <SenseBoxBLE.h>
 
@@ -123,6 +124,7 @@ void handleClearDisplay(String args) {
 
 void handleDisplay(String args) {
   args.trim();
+  Serial.printf("[DISPLAY] Raw args: '%s'\n", args.c_str());
 
   // Parse optional size parameter: DISPLAY "text", S|M|L
   uint8_t textSize = 1; // default: S
@@ -151,10 +153,12 @@ void handleDisplay(String args) {
     String sizeArg = args.substring(commaPos + 1);
     sizeArg.trim();
     sizeArg.toUpperCase();
+    Serial.printf("[DISPLAY] Size arg: '%s'\n", sizeArg.c_str());
     if (sizeArg == "M") textSize = 2;
     else if (sizeArg == "L") textSize = 3;
     args = args.substring(0, commaPos);
     args.trim();
+    Serial.printf("[DISPLAY] After parsing size, args: '%s'\n", args.c_str());
   }
 
   // Increase y counter based on text size
@@ -165,7 +169,16 @@ void handleDisplay(String args) {
     displayText(inside, textSize);
     return;
   }
-  // Ansonsten: Zahl evaluieren
+  
+  // Check if it's a string variable
+  if (isVarString(args)) {
+    String strValue = getVarString(args);
+    Serial.printf("[DISPLAY] Variable '%s' is string: \"%s\"\n", args.c_str(), strValue.c_str());
+    displayText(strValue, textSize);
+    return;
+  }
+  
+  // Otherwise: evaluate as number
   float num = evalNumber(args);
   displayNumber((float)num, textSize);  
 }

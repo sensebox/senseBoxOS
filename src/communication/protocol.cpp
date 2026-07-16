@@ -1,5 +1,6 @@
 #include "communication/protocol.h"
 #include "helpers/interpreter.h"
+#include "helpers/script_parser.h"
 #include "peripherals/display.h"
 #include "peripherals/led.h"
 
@@ -19,7 +20,9 @@ CommandBuffer commandBuffer;
 static const char* knownCommands[] = {
   "led(", "delay(", "display(", "clearDisplay(", "displayMeasurement(",
   "if(", "while(", "for(", "else", "}", 
-  "sensor:", "buttonPressed(", "random(", "lightBoard=sensor:board:light", "sensor:board:light", NULL
+  "sensor:", "buttonPressed(", "random(", "lightBoard=sensor:board:light", "sensor:board:light",
+  "BEGIN_SETUP", "END_SETUP", "BEGIN_LOOP", "END_LOOP",  // Block markers
+  NULL
 };
 
 // ===== CommandBuffer Implementation =====
@@ -46,6 +49,14 @@ String CommandBuffer::cleanLine(String line) {
         line.trim();
     }
     
+    // Check if it's a marker (should not be cleaned further)
+    String upper = line;
+    upper.toUpperCase();
+    if (upper == "BEGIN_SETUP" || upper == "END_SETUP" || 
+        upper == "BEGIN_LOOP" || upper == "END_LOOP") {
+        return upper;  // Return normalized marker
+    }
+    
     // Fix for garbage before commands: if line starts with 1-2 garbage chars 
     // followed by a known command, strip the garbage
     if (line.length() > 2 && !startsWithKnownCommand(line)) {
@@ -69,72 +80,94 @@ String CommandBuffer::cleanLine(String line) {
     return line;
 }
 
+void CommandBuffer::startScriptExecution() {
+    if (runningScript) {
+        Serial.println("[CMD] Script already running, stopping current script first...");
+        runningScript = false;
+        runForever = false;
+        delay(100);
+        scriptLines.clear();
+        setupLines.clear();
+        loopLines.clear();
+        variables.clear();
+        setupExecuted = false;
+    }
+    
+    if (scriptLines.size() == 0) {
+        Serial.println("[CMD] Ignoring start - no script lines available");
+        return;
+    }
+    
+    Serial.println("========== PARSING SCRIPT ==========");
+    Serial.printf("Raw script has %d lines:\n", scriptLines.size());
+    for (int i = 0; i < scriptLines.size(); i++) {
+        Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
+    }
+    
+    // Parse the script into Setup/Loop blocks
+    ParseResult parseResult = ScriptParser::parseBlocks(scriptLines);
+    
+    if (!parseResult.valid) {
+        Serial.println("[CMD] Script parsing failed!");
+        Serial.println(parseResult.errorMsg);
+        scriptLines.clear();
+        setupLines.clear();
+        loopLines.clear();
+        return;
+    }
+    
+    // Validate the structure
+    String validationError = "";
+    if (!ScriptParser::validateStructure(parseResult.blocks, validationError)) {
+        Serial.println("[CMD] Script validation failed!");
+        Serial.println(validationError);
+        scriptLines.clear();
+        setupLines.clear();
+        loopLines.clear();
+        return;
+    }
+    
+    // Store the parsed blocks
+    setupLines = parseResult.blocks.setupLines;
+    loopLines = parseResult.blocks.loopLines;
+    hasSetup = parseResult.blocks.hasSetup;
+    hasLoop = parseResult.blocks.hasLoop;
+    setupExecuted = false;  // Reset flag for new execution
+    
+    Serial.println("========== SCRIPT PARSED SUCCESSFULLY ==========");
+    Serial.printf("SETUP block: %d lines\n", setupLines.size());
+    for (int i = 0; i < setupLines.size(); i++) {
+        Serial.printf("  [SETUP %d]: %s\n", i, setupLines[i].c_str());
+    }
+    Serial.printf("LOOP block: %d lines\n", loopLines.size());
+    for (int i = 0; i < loopLines.size(); i++) {
+        Serial.printf("  [LOOP %d]: %s\n", i, loopLines[i].c_str());
+    }
+    Serial.println("===============================================");
+    
+    clearDisplay();
+    resetDisplayTextY();
+    setLedRGB(0, 0, 0);
+    runningScript = true;
+    runForever = true;  // Always run infinitely in loop mode
+    
+    Serial.println("Starting LOOP (infinite)...");
+    runScript();
+    runningScript = false;
+}
+
 void CommandBuffer::handleControlCommand(const String& cmd) {
     String up = cmd;
     up.toUpperCase();
     
-    if (up == "RUN") {
-        if (runningScript) {
-            Serial.println("[CMD] Script already running, stopping current script first...");
-            runningScript = false;
-            runForever = false;
-            delay(100);
-            scriptLines.clear();
-            variables.clear();
-        }
-        
-        if (scriptLines.size() == 0) {
-            Serial.println("[CMD] Ignoring RUN - no script lines available");
-            return;
-        }
-        
-        Serial.println("========== EXECUTING SCRIPT ==========");
-        Serial.printf("Script has %d lines:\n", scriptLines.size());
-        for (int i = 0; i < scriptLines.size(); i++) {
-            Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
-        }
-        Serial.println("======================================");
-        clearDisplay();
-        resetDisplayTextY();
-        setLedRGB(0, 0, 0);
-        runningScript = true;
-        runForever = false;
-        runScript();
-        runningScript = false;
-    }
-    else if (up == "LOOP") {
-        if (runningScript) {
-            Serial.println("[CMD] Script already running, stopping current script first...");
-            runningScript = false;
-            runForever = false;
-            delay(100);
-            scriptLines.clear();
-            variables.clear();
-        }
-        
-        if (scriptLines.size() == 0) {
-            Serial.println("[CMD] Ignoring LOOP - no script lines available");
-            return;
-        }
-        
-        Serial.println("========== EXECUTING SCRIPT (LOOP) ==========");
-        Serial.printf("Script has %d lines:\n", scriptLines.size());
-        for (int i = 0; i < scriptLines.size(); i++) {
-            Serial.printf("  [%d]: %s\n", i, scriptLines[i].c_str());
-        }
-        Serial.println("=============================================");
-        clearDisplay();
-        resetDisplayTextY();
-        setLedRGB(0, 0, 0);
-        runningScript = true;
-        runForever = true;
-        runScript();
-    }
-    else if (up == "STOP") {
+    if (up == "STOP") {
         runForever = false;
         runningScript = false;
         scriptLines.clear();
+        setupLines.clear();
+        loopLines.clear();
         variables.clear();
+        setupExecuted = false;
         Serial.println("Stopped");
     }
 }
@@ -146,10 +179,70 @@ void CommandBuffer::addScriptLine(const String& line) {
     }
     
     String cleaned = cleanLine(line);
-    if (cleaned.length() > 0) {
-
-        scriptLines.push_back(cleaned);
-        Serial.printf("[CMD] Added line: \"%s\"\n", cleaned.c_str());
+    if (cleaned.length() == 0) return;
+    
+    // Check if line contains embedded markers like "END_SETUPdes1=23"
+    // Split on common block markers
+    std::vector<String> parts;
+    String current = "";
+    const char* markers[] = {"BEGIN_SETUP", "END_SETUP", "BEGIN_LOOP", "END_LOOP", NULL};
+    
+    int idx = 0;
+    while (idx < cleaned.length()) {
+        bool foundMarker = false;
+        
+        // Check each marker at current position
+        for (int m = 0; markers[m] != NULL; m++) {
+            String marker = markers[m];
+            if (cleaned.substring(idx).startsWith(marker)) {
+                // Found a marker - save current content if any
+                String content = current;
+                content.trim();
+                if (content.length() > 0) {
+                    parts.push_back(content);
+                    current = "";
+                }
+                // Add the marker
+                parts.push_back(marker);
+                idx += marker.length();
+                foundMarker = true;
+                break;
+            }
+        }
+        
+        if (!foundMarker) {
+            current += cleaned[idx];
+            idx++;
+        }
+    }
+    
+    // Add any remaining content
+    String content = current;
+    content.trim();
+    if (content.length() > 0) {
+        parts.push_back(content);
+    }
+    
+    // Add all parts to scriptLines
+    bool hasEndLoop = false;
+    for (const auto& part : parts) {
+        String p = part;
+        p.trim();
+        if (p.length() > 0) {
+            scriptLines.push_back(p);
+            Serial.printf("[CMD] Added line [%d]: \"%s\"\n", scriptLines.size()-1, p.c_str());
+            
+            // Check if this is END_LOOP marker
+            if (p == "END_LOOP") {
+                hasEndLoop = true;
+            }
+        }
+    }
+    
+    // If we received END_LOOP, automatically start script execution
+    if (hasEndLoop) {
+        Serial.println("[CMD] END_LOOP received - starting script execution automatically");
+        startScriptExecution();
     }
 }
 
@@ -170,13 +263,14 @@ void CommandBuffer::flush(const char* reason) {
     // Check if it's a control command
     String up = s;
     up.toUpperCase();
-    if (up == "RUN" || up == "LOOP" || up == "STOP") {
+    if (up == "STOP") {
         handleControlCommand(s);
         return;
     }
     
     // Simply add the line as-is (no complex re-parsing)
     // The character-by-character processing already handled the structure
+    // Note: END_LOOP will trigger automatic execution in addScriptLine()
     addScriptLine(s);
 }
 
@@ -302,54 +396,6 @@ void CommandBuffer::processChar(char c) {
         sawOpenBrace = false;
         justFlushed = true;
         return;
-    }
-    
-    // Check if buffer ends with a control word (only if not inside parens/braces)
-    if (parenDepth == 0 && braceDepth == 0 && buffer.length() >= 3) {
-        String bufUpper = buffer;
-        bufUpper.toUpperCase();
-        
-        String controlWord = "";
-        int controlWordLen = 0;
-        
-        if (bufUpper.endsWith("RUN")) {
-            controlWord = "RUN";
-            controlWordLen = 3;
-        } else if (bufUpper.endsWith("LOOP")) {
-            controlWord = "LOOP";
-            controlWordLen = 4;
-        } else if (bufUpper.endsWith("STOP")) {
-            controlWord = "STOP";
-            controlWordLen = 4;
-        }
-        
-        if (controlWordLen > 0) {
-            Serial.printf("[CMD] Control word '%s' detected at end of buffer\n", 
-                         controlWord.c_str());
-            clearDisplay();
-            resetDisplayTextY();
-            // Extract everything before the control word
-            String beforeControl = buffer.substring(0, buffer.length() - controlWordLen);
-            beforeControl.trim();
-            
-            // Add what was before to script only if it's a valid command
-            // (contains '=' for assignment or '(' for function call, or starts with known command)
-            if (beforeControl.length() > 0) {
-                if (beforeControl.indexOf('=') >= 0 || 
-                    beforeControl.indexOf('(') >= 0 || 
-                    startsWithKnownCommand(beforeControl)) {
-                    addScriptLine(beforeControl);
-                } else {
-                    Serial.printf("[CMD] Ignoring invalid fragment before control word: \"%s\"\n", 
-                                 beforeControl.c_str());
-                }
-            }
-            
-            // Now flush with just the control word
-            buffer = controlWord;
-            flush("control");
-            justFlushed = true;
-        }
     }
 }
 
