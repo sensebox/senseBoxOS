@@ -21,6 +21,7 @@ static const char* knownCommands[] = {
   "led(", "delay(", "display(", "clearDisplay(", "displayMeasurement(",
   "if(", "while(", "for(", "else", "}", 
   "sensor:", "buttonPressed(", "random(", "lightBoard=sensor:board:light", "sensor:board:light",
+  "sendBLE(", "sendSerial(",
   "BEGIN_SETUP", "END_SETUP", "BEGIN_LOOP", "END_LOOP",  // Block markers
   NULL
 };

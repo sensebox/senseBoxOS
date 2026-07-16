@@ -22,3 +22,8 @@ void SerialModule::loop() {
     // Check for idle flush
     commandBuffer.checkIdleFlush();
 }
+
+void SerialModule::sendValue(const String& label, float value) {
+    // Distinctive prefix so the host can filter data lines from debug output
+    Serial.printf("DATA:%s=%.2f\n", label.c_str(), value);
+}

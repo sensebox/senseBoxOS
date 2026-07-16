@@ -7,3 +7,5 @@ typedef void (*CommandHandler)(String args);
 extern std::map<String, CommandHandler> commandMap;
 void setupCommandMap();
 void handleSensorCommand(String args);
+void handleSendBLE(String args);
+void handleSendSerial(String args);
