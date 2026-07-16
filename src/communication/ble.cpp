@@ -7,6 +7,7 @@ BLEModule bleModule;
 // ===== BLE UUIDs =====
 static const char* BLE_SERVICE_UUID = "CF06A218F68EE0BEAD048EBC1EB0BC84";
 static const char* BLE_RX_UUID      = "2CDF217435BEFDC44CA26FD173F8B3A8";
+static const char* BLE_TX_UUID      = "9D8F1B2C3A4D5E6F70819293A4B5C6D7";
 
 // Connection state tracking
 static bool bleConnected = false;
@@ -55,6 +56,15 @@ bool BLEModule::begin(String deviceId) {
   int rxHandle = SenseBoxBLE::setConfigCharacteristic(BLE_SERVICE_UUID, BLE_RX_UUID);
   if (rxHandle <= 0) Serial.println("BLE: setConfigCharacteristic failed or already set.");
   SenseBoxBLE::configHandler = BLEModule::onBleConfigWrite;
+
+  // Add a characteristic to send measurement values back to the host.
+  // It is attached to the same service that setConfigCharacteristic just created.
+  sendCharacteristicHandle = SenseBoxBLE::addCharacteristic(BLE_TX_UUID);
+  if (sendCharacteristicHandle <= 0) {
+    Serial.println("[BLE] Failed to add send characteristic - sendBLE() disabled.");
+  } else {
+    Serial.printf("[BLE] Send characteristic ready (handle: %d)\n", sendCharacteristicHandle);
+  }
   
   // Use provided device ID as BLE name
   String deviceName = "senseBox-" + deviceId;
@@ -147,4 +157,32 @@ void BLEModule::onBleConfigWrite() {
 
   // Feed decoded text into central command buffer
   commandBuffer.processString(chunk);
+}
+
+bool BLEModule::sendValue(float value) {
+  if (!bleAvailable) {
+    Serial.println("[BLE] sendBLE() ignored - BLE not available.");
+    return false;
+  }
+  if (sendCharacteristicHandle <= 0) {
+    Serial.println("[BLE] sendBLE() ignored - send characteristic not initialized.");
+    return false;
+  }
+  bool ok = SenseBoxBLE::write(sendCharacteristicHandle, value);
+  Serial.printf("[BLE] sendBLE value=%.2f (%s)\n", value, ok ? "sent" : "no host");
+  return ok;
+}
+
+bool BLEModule::sendValue(float identifier, float value) {
+  if (!bleAvailable) {
+    Serial.println("[BLE] sendBLE() ignored - BLE not available.");
+    return false;
+  }
+  if (sendCharacteristicHandle <= 0) {
+    Serial.println("[BLE] sendBLE() ignored - send characteristic not initialized.");
+    return false;
+  }
+  bool ok = SenseBoxBLE::write(sendCharacteristicHandle, identifier, value);
+  Serial.printf("[BLE] sendBLE id=%.0f value=%.2f (%s)\n", identifier, value, ok ? "sent" : "no host");
+  return ok;
 }
