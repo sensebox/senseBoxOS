@@ -410,3 +410,336 @@ void handleDisplayMeasurement(String args) {
   // Display the measurement with chosen precision
   displayMeasurement(value, namePart, unitPart, decimals);
 }
+
+// Pixel drawing function
+void drawPixel(int x, int y, uint16_t color) {
+  if (!oledInitialized) {
+    initDisplay();
+  }
+  
+  // Validate coordinates
+  if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT) {
+    Serial.printf("[DRAWPIXEL] Error: Pixel outside bounds (%d, %d). Display is %dx%d\n", 
+                  x, y, SCREEN_WIDTH, SCREEN_HEIGHT);
+    return;
+  }
+  
+  // Draw the pixel
+  oled.drawPixel(x, y, color);
+}
+
+// Refresh/update display after drawing pixels
+void refreshDisplay() {
+  if (oledInitialized) {
+    oled.display();
+  }
+}
+
+// Handle DRAWPIXEL command
+// Format: DRAWPIXEL x, y [, color]
+// Examples: DRAWPIXEL 64, 32
+//           DRAWPIXEL 10, 20, 1 (color: 1=white, 0=black)
+void handleDrawPixel(String args) {
+  args.trim();
+  
+  // Parse comma-separated values
+  int firstComma = args.indexOf(',');
+  if (firstComma == -1) {
+    Serial.println("[DRAWPIXEL] Error: Expected format: DRAWPIXEL x, y [, color]");
+    return;
+  }
+  
+  int secondComma = args.indexOf(',', firstComma + 1);
+  
+  String xStr = args.substring(0, firstComma);
+  String yStr;
+  String colorStr = "1"; // default: white
+  
+  if (secondComma == -1) {
+    // Only x and y provided
+    yStr = args.substring(firstComma + 1);
+  } else {
+    // x, y, and color provided
+    yStr = args.substring(firstComma + 1, secondComma);
+    colorStr = args.substring(secondComma + 1);
+  }
+  
+  xStr.trim();
+  yStr.trim();
+  colorStr.trim();
+  
+  // Parse coordinates
+  int x = evalNumber(xStr);
+  int y = evalNumber(yStr);
+  uint16_t color = (evalNumber(colorStr) != 0) ? SSD1306_WHITE : SSD1306_BLACK;
+  
+  Serial.printf("[DRAWPIXEL] Drawing pixel at (%d, %d) with color %d\n", x, y, color);
+  
+  // Draw the pixel
+  drawPixel(x, y, color);
+}
+
+// ============================================================================
+// BITMAP SYSTEM
+// ============================================================================
+
+// Example bitmaps
+// 8x8 Smiley face
+const unsigned char bitmap_smiley[] PROGMEM = {
+  0x3C, 0x42, 0xA5, 0x81, 0xA5, 0x99, 0x42, 0x3C
+};
+
+// 8x8 Heart
+const unsigned char bitmap_heart[] PROGMEM = {
+  0x00, 0x66, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C, 0x18
+};
+
+// 8x8 Warning/Exclamation
+const unsigned char bitmap_warning[] PROGMEM = {
+  0x18, 0x18, 0x18, 0x18, 0x00, 0x18, 0x18, 0x18
+};
+
+// Bitmap registry (map of name -> bitmap)
+#include <map>
+std::map<String, Bitmap> bitmapRegistry;
+
+// Register a bitmap for later use
+void registerBitmap(const String& name, const Bitmap& bitmap) {
+  bitmapRegistry[name] = bitmap;
+  Serial.printf("[BITMAP] Registered bitmap '%s' (%d x %d)\n", name.c_str(), bitmap.width, bitmap.height);
+}
+
+// Get a bitmap by name
+Bitmap* getBitmap(const String& name) {
+  auto it = bitmapRegistry.find(name);
+  if (it != bitmapRegistry.end()) {
+    return &(it->second);
+  }
+  return nullptr;
+}
+
+// Draw a bitmap at specified position
+void drawBitmap(int x, int y, const Bitmap& bitmap, uint16_t color) {
+  if (!oledInitialized) {
+    initDisplay();
+  }
+  
+  // Validate position (allow drawing slightly outside if partial overlap)
+  if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT) {
+    Serial.printf("[BITMAP] Warning: Bitmap position (%d, %d) outside display bounds\n", x, y);
+  }
+  
+  oled.drawBitmap(x, y, bitmap.data, bitmap.width, bitmap.height, color);
+  Serial.printf("[BITMAP] Drew bitmap (%d x %d) at position (%d, %d)\n", 
+                bitmap.width, bitmap.height, x, y);
+}
+
+// Handle DRAWBITMAP command
+// Format: DRAWBITMAP x, y, bitmap_name [, color]
+// Examples: DRAWBITMAP 60, 28, smiley
+//           DRAWBITMAP 10, 10, heart, 1
+void handleDrawBitmap(String args) {
+  args.trim();
+  
+  // Find first two commas
+  int firstComma = args.indexOf(',');
+  if (firstComma == -1) {
+    Serial.println("[DRAWBITMAP] Error: Expected format: DRAWBITMAP x, y, bitmap_name [, color]");
+    return;
+  }
+  
+  int secondComma = args.indexOf(',', firstComma + 1);
+  if (secondComma == -1) {
+    Serial.println("[DRAWBITMAP] Error: Expected format: DRAWBITMAP x, y, bitmap_name [, color]");
+    return;
+  }
+  
+  int thirdComma = args.indexOf(',', secondComma + 1);
+  
+  // Extract parts
+  String xStr = args.substring(0, firstComma);
+  String yStr = args.substring(firstComma + 1, secondComma);
+  String bitmapName;
+  String colorStr = "1"; // default: white
+  
+  if (thirdComma == -1) {
+    // Only x, y, and name provided
+    bitmapName = args.substring(secondComma + 1);
+  } else {
+    // x, y, name, and color provided
+    bitmapName = args.substring(secondComma + 1, thirdComma);
+    colorStr = args.substring(thirdComma + 1);
+  }
+  
+  xStr.trim();
+  yStr.trim();
+  bitmapName.trim();
+  colorStr.trim();
+  
+  // Remove quotes from bitmap name if present
+  if (bitmapName.startsWith("\"") && bitmapName.endsWith("\"")) {
+    bitmapName = bitmapName.substring(1, bitmapName.length() - 1);
+  }
+  
+  // Parse coordinates and color
+  int x = evalNumber(xStr);
+  int y = evalNumber(yStr);
+  uint16_t color = (evalNumber(colorStr) != 0) ? SSD1306_WHITE : SSD1306_BLACK;
+  
+  // Look up bitmap
+  Bitmap* bitmap = getBitmap(bitmapName);
+  if (!bitmap) {
+    Serial.printf("[DRAWBITMAP] Error: Bitmap '%s' not found\n", bitmapName.c_str());
+    Serial.println("[DRAWBITMAP] Available bitmaps:");
+    for (auto& pair : bitmapRegistry) {
+      Serial.printf("  - %s (%d x %d)\n", pair.first.c_str(), pair.second.width, pair.second.height);
+    }
+    return;
+  }
+  
+  Serial.printf("[DRAWBITMAP] Drawing bitmap '%s' at (%d, %d)\n", bitmapName.c_str(), x, y);
+  drawBitmap(x, y, *bitmap, color);
+}
+
+// Initialize built-in bitmaps (call this on startup)
+void initBitmaps() {
+  Bitmap smiley = {bitmap_smiley, 8, 8};
+  Bitmap heart = {bitmap_heart, 8, 8};
+  Bitmap warning = {bitmap_warning, 8, 8};
+  
+  registerBitmap("smiley", smiley);
+  registerBitmap("heart", heart);
+  registerBitmap("warning", warning);
+  
+  Serial.println("[BITMAP] Built-in bitmaps initialized");
+}
+
+// ============================================================================
+// DISPLAY MATRIX SYSTEM (8x8 grid, 16x8 pixels per cell)
+// ============================================================================
+
+// Draw an 8x8 matrix on the display
+// Each cell is 16x8 pixels (total 128x64)
+// matrix[row][col]: 0 = black, 1 = white
+void displayMatrix(const uint8_t matrix[MATRIX_HEIGHT][MATRIX_WIDTH], bool showGrid) {
+  if (!oledInitialized) {
+    initDisplay();
+  }
+  
+  oled.clearDisplay();
+  
+  // Draw each cell
+  for (int row = 0; row < MATRIX_HEIGHT; row++) {
+    for (int col = 0; col < MATRIX_WIDTH; col++) {
+      int x = col * CELL_WIDTH;
+      int y = row * CELL_HEIGHT;
+      uint8_t value = matrix[row][col];
+      
+      // Draw filled rectangle or empty rectangle based on value
+      if (value == 1) {
+        // Draw filled white rectangle
+        oled.fillRect(x, y, CELL_WIDTH, CELL_HEIGHT, SSD1306_WHITE);
+      } else if (showGrid) {
+        // Draw black rectangle with white border (grid mode)
+        oled.drawRect(x, y, CELL_WIDTH, CELL_HEIGHT, SSD1306_WHITE);
+      }
+      // Otherwise: draw nothing (black on black)
+    }
+  }
+  
+  // Draw grid lines if requested
+  if (showGrid) {
+    // Vertical lines
+    for (int col = 1; col < MATRIX_WIDTH; col++) {
+      int x = col * CELL_WIDTH;
+      oled.drawLine(x, 0, x, SCREEN_HEIGHT, SSD1306_WHITE);
+    }
+    // Horizontal lines
+    for (int row = 1; row < MATRIX_HEIGHT; row++) {
+      int y = row * CELL_HEIGHT;
+      oled.drawLine(0, y, SCREEN_WIDTH, y, SSD1306_WHITE);
+    }
+  }
+  
+  oled.display();
+  Serial.println("[MATRIX] Display matrix rendered");
+}
+
+// Parse and display matrix from string
+// Format 1: DISPLAYMATRIX "10101010|01010101|10101010|01010101|10101010|01010101|10101010|01010101"
+// Format 2: DISPLAYMATRIX 10101010 01010101 10101010 01010101 10101010 01010101 10101010 01010101
+// (8 rows, each with 8 digits 0 or 1)
+void handleDisplayMatrix(String args) {
+  args.trim();
+  
+  uint8_t matrix[MATRIX_HEIGHT][MATRIX_WIDTH];
+  bool showGrid = false;
+  
+  // Check if grid mode is requested (ends with ", grid" or similar)
+  if (args.endsWith(", grid") || args.endsWith(",grid")) {
+    showGrid = true;
+    int commaPos = args.lastIndexOf(',');
+    args = args.substring(0, commaPos);
+    args.trim();
+  }
+  
+  // Remove quotes if present
+  if (args.startsWith("\"") && args.endsWith("\"")) {
+    args = args.substring(1, args.length() - 1);
+  }
+  
+  // Detect separator: pipe (|) or space
+  char separator = ' ';
+  if (args.indexOf('|') != -1) {
+    separator = '|';
+  }
+  
+  // Parse rows
+  int rowIndex = 0;
+  int startPos = 0;
+  
+  while (rowIndex < MATRIX_HEIGHT) {
+    int endPos = args.indexOf(separator, startPos);
+    if (endPos == -1) {
+      endPos = args.length();
+    }
+    
+    String rowStr = args.substring(startPos, endPos);
+    rowStr.trim();
+    
+    if (rowStr.length() == MATRIX_WIDTH) {
+      // Parse each digit in the row
+      for (int col = 0; col < MATRIX_WIDTH; col++) {
+        char digit = rowStr[col];
+        if (digit == '1') {
+          matrix[rowIndex][col] = 1;
+        } else if (digit == '0') {
+          matrix[rowIndex][col] = 0;
+        } else {
+          Serial.printf("[MATRIX] Error: Invalid character '%c' at row %d, col %d (expected 0 or 1)\n", 
+                       digit, rowIndex, col);
+          return;
+        }
+      }
+      rowIndex++;
+    } else if (rowStr.length() > 0) {
+      Serial.printf("[MATRIX] Error: Row %d has length %d, expected %d\n", 
+                   rowIndex, rowStr.length(), MATRIX_WIDTH);
+      return;
+    }
+    
+    startPos = endPos + 1;
+    
+    // Safety check to avoid infinite loop
+    if (endPos >= args.length()) break;
+  }
+  
+  if (rowIndex != MATRIX_HEIGHT) {
+    Serial.printf("[MATRIX] Error: Expected %d rows, got %d\n", MATRIX_HEIGHT, rowIndex);
+    return;
+  }
+  
+  Serial.printf("[MATRIX] Matrix parsed successfully (grid mode: %s)\n", 
+               showGrid ? "ON" : "OFF");
+  displayMatrix(matrix, showGrid);
+}

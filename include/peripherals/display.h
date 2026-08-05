@@ -25,5 +25,32 @@ void displaySerialOnlyMode();
 void displayMeasurement(float value, const String& sensorName, const String& unit, int decimals = 2);
 void handleDisplayMeasurement(String args);
 
+// Pixel drawing functions
+void drawPixel(int x, int y, uint16_t color = SSD1306_WHITE);
+void handleDrawPixel(String args);
+void refreshDisplay();
+
+// Bitmap drawing functions
+struct Bitmap {
+  const unsigned char* data;
+  int width;
+  int height;
+};
+
+void drawBitmap(int x, int y, const Bitmap& bitmap, uint16_t color = SSD1306_WHITE);
+void handleDrawBitmap(String args);
+void registerBitmap(const String& name, const Bitmap& bitmap);
+Bitmap* getBitmap(const String& name);
+void initBitmaps();
+
+// Display Matrix functions (8x8 grid, each cell is 16x8 pixels)
+#define MATRIX_WIDTH 8
+#define MATRIX_HEIGHT 8
+#define CELL_WIDTH 16
+#define CELL_HEIGHT 8
+
+void displayMatrix(const uint8_t matrix[MATRIX_HEIGHT][MATRIX_WIDTH], bool showGrid = false);
+void handleDisplayMatrix(String args);
+
 // Global device ID
 extern String deviceID;

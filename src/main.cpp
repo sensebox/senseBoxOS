@@ -30,6 +30,7 @@ void setup() {
   setupCommandMap();
   initLedRGB();
   initDisplay();
+  initBitmaps();
   
   // Try to initialize BME680, only register if available
   if (BME680Sensor.begin()) {
