@@ -81,6 +81,9 @@ void setupCommandMap() {
   commandMap["display"] = handleDisplay;
   commandMap["clearDisplay"] = handleClearDisplay;
   commandMap["displayMeasurement"] = handleDisplayMeasurement;
+  commandMap["drawPixel"] = handleDrawPixel;
+  commandMap["drawBitmap"] = handleDrawBitmap;
+  commandMap["displayMatrix"] = handleDisplayMatrix;
   commandMap["led"]     = handleLed;
   commandMap["randomLed"] = handleRandomLed;
   commandMap["delay"]   = handleDelay;

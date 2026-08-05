@@ -174,13 +174,26 @@ void CommandBuffer::handleControlCommand(const String& cmd) {
 }
 
 void CommandBuffer::addScriptLine(const String& line) {
-    if (runningScript) {
+    String cleaned = cleanLine(line);
+    if (cleaned.length() == 0) return;
+    
+    // Check if this line starts with BEGIN_SETUP - new script upload
+    if (cleaned == "BEGIN_SETUP" && runningScript) {
+        Serial.println("[CMD] BEGIN_SETUP detected - stopping current script to accept new upload");
+        runForever = false;
+        runningScript = false;
+        delay(100);
+        scriptLines.clear();
+        setupLines.clear();
+        loopLines.clear();
+        variables.clear();
+        setupExecuted = false;
+    }
+    
+    if (runningScript && cleaned != "BEGIN_SETUP") {
         Serial.printf("[CMD] Ignoring line while script is running: \"%s\"\n", line.c_str());
         return;
     }
-    
-    String cleaned = cleanLine(line);
-    if (cleaned.length() == 0) return;
     
     // Check if line contains embedded markers like "END_SETUPdes1=23"
     // Split on common block markers
@@ -241,9 +254,16 @@ void CommandBuffer::addScriptLine(const String& line) {
     }
     
     // If we received END_LOOP, automatically start script execution
+    // (but not if a script is already running - that's corruption from sender resending)
     if (hasEndLoop) {
-        Serial.println("[CMD] END_LOOP received - starting script execution automatically");
-        startScriptExecution();
+        if (runningScript) {
+            Serial.println("[CMD] END_LOOP received but script already running - ignoring (sender resend?)");
+            // Clear the corrupted scriptLines
+            scriptLines.clear();
+        } else {
+            Serial.println("[CMD] END_LOOP received - starting script execution automatically");
+            startScriptExecution();
+        }
     }
 }
 

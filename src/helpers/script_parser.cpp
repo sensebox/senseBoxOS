@@ -89,8 +89,13 @@ ParseResult ScriptParser::parseBlocks(const std::vector<String>& allLines) {
         BlockType type = identifyMarker(allLines[i]);
         
         if (type == BlockType::CONTROL_COMMAND) {
-            // Control commands mark the end of script collection
-            break;
+            // Only break on control commands if we've already found markers
+            // (e.g., STOP before BEGIN_SETUP should be skipped, but STOP after END_LOOP should stop)
+            if (setupStartIdx != -1 || loopStartIdx != -1) {
+                break;
+            }
+            // Otherwise skip this control command and continue looking for markers
+            continue;
         }
         
         if (type == BlockType::BEGIN_SETUP) {
