@@ -20,10 +20,12 @@
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
 #include "peripherals/sensors/light.h"
+#include "peripherals/sensors/accelerometer.h"
 
 BME680Sensor BME680Sensor;
 HDC1080Sensor HDC1080Sensor;
 LightSensor lightSensor;
+AccelerometerSensor accelerometerSensor;
 
 void setup() {
   serialModule.setup();
@@ -55,6 +57,14 @@ void setup() {
   if (lightSensor.begin()) {
     sensorRegistry.registerSensor("board", &lightSensor);
     Serial.println("[Sensor] Light sensor registered as 'board'");
+  }
+  
+  // Initialize and register accelerometer sensor
+  if (accelerometerSensor.begin()) {
+    sensorRegistry.registerSensor("accelerometer", &accelerometerSensor);
+    Serial.println("[Sensor] Accelerometer registered");
+  } else {
+    Serial.println("[Sensor] Accelerometer not available");
   }
 
   initButton();

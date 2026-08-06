@@ -22,33 +22,33 @@ String AccelerometerSensor::getSensorType() const {
 bool AccelerometerSensor::begin() {
     Wire1.begin();
     
-    // Try MPU6050 first
-    if (mpu.begin(0x68, &Wire1)) {
-        mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-        mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-        activeSensor = ACCEL_MPU6050;
-        Serial.println("MPU6050 Accelerometer initialized");
-        return true;
-    }
-    
-    // If MPU6050 fails, try ICM42670P
-    if (icm.begin() == 0) {
-        icm.startAccel(21, 8); // Accel ODR = 100 Hz, Range = 8G
-        activeSensor = ACCEL_ICM42670P;
-        Serial.println("ICM42670P Accelerometer initialized");
-        return true;
-    }
-
-    // If ICM42670P fails, try ICM20948
+    // Try ICM20948 first (preferred sensor)
     if (icm2.begin_I2C(0x68, &Wire1)) {
         icm2.setAccelRange(ICM20948_ACCEL_RANGE_8_G);
         icm2.setAccelRateDivisor(10);
         activeSensor = ACCEL_ICM20948;
-        Serial.println("ICM20948 Accelerometer initialized");
+        Serial.println("[Accelerometer] ICM20948 detected and initialized");
         return true;
     }
     
-    Serial.println("No accelerometer sensor found!");
+    // If ICM20948 fails, try ICM42670P
+    if (icm.begin() == 0) {
+        icm.startAccel(21, 8); // Accel ODR = 100 Hz, Range = 8G
+        activeSensor = ACCEL_ICM42670P;
+        Serial.println("[Accelerometer] ICM42670P detected and initialized");
+        return true;
+    }
+
+    // If ICM42670P fails, try MPU6050 (fallback)
+    if (mpu.begin(0x68, &Wire1)) {
+        mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+        mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+        activeSensor = ACCEL_MPU6050;
+        Serial.println("[Accelerometer] MPU6050 detected and initialized");
+        return true;
+    }
+    
+    Serial.println("[Accelerometer] No accelerometer sensor found!");
     activeSensor = ACCEL_NONE;
     return false;
 }
