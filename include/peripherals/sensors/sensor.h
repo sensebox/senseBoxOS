@@ -22,14 +22,15 @@ public:
     // Check if sensor is properly initialized and working
     virtual bool isHealthy() const = 0;
     
-protected:
     // Initialize the sensor hardware
     virtual bool begin() = 0;
-public:
+    
     // Optional polling hook that will be called periodically by the registry
     // Default implementation does nothing; sensors that need periodic work
     // (like BME680) should override this to update their cached values.
     virtual void poll() { }
+    
+protected:
 };
 
 // Base implementation class that provides common functionality

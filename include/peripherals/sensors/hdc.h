@@ -9,9 +9,9 @@ public:
     
     std::vector<String> getSupportedMeasurements() const override;
     String getSensorType() const override;
+    bool begin() override;
     
 protected:
-    bool begin() override;
     float readMeasurement(const String& measurementType) override;
     
 private:

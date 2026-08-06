@@ -14,15 +14,57 @@ void SensorRegistry::registerSensor(const String& sensorType, Sensor* sensor) {
 }
 
 float SensorRegistry::readSensor(const String& sensorType, const String& measurement) {
-    // Check if sensor is already registered
-    auto it = sensors.find(sensorType);
+    // Handle automatic sensor selection for temperature/humidity
+    // Users can request "sensor:temperature:temperature", "sensor:humidity:humidity", 
+    // "sensor:auto:temperature", "sensor:generic:humidity", etc.
+    String actualSensorType = sensorType;
+    
+    if (sensorType.equalsIgnoreCase("auto") || 
+        sensorType.equalsIgnoreCase("generic") ||
+        sensorType.equalsIgnoreCase("temperature") ||
+        sensorType.equalsIgnoreCase("humidity")) {
+        
+        // For auto-selection, prefer available sensor with the requested measurement
+        if (measurement.equalsIgnoreCase("temperature") || measurement.equalsIgnoreCase("humidity")) {
+            // Try BME680 first (has more features), then HDC1080
+            if (sensors.find("bme680") != sensors.end()) {
+                actualSensorType = "bme680";
+            } else if (sensors.find("hdc1080") != sensors.end()) {
+                actualSensorType = "hdc1080";
+            } else {
+                Serial.printf("[SensorRegistry] No temperature/humidity sensor available\n");
+                return ERROR_SENSOR_NOT_FOUND;
+            }
+        }
+    }
+    
+    // Check if sensor is registered
+    auto it = sensors.find(actualSensorType);
     if (it == sensors.end()) {
         // Sensor not found in registry
-        Serial.printf("[SensorRegistry] Sensor '%s' not registered\n", sensorType.c_str());
+        Serial.printf("[SensorRegistry] Sensor '%s' not registered\n", actualSensorType.c_str());
+        
+        // Try automatic fallback for temperature/humidity between BME680 and HDC1080
+        if (measurement.equalsIgnoreCase("temperature") || measurement.equalsIgnoreCase("humidity")) {
+            String fallbackSensor = "";
+            
+            if (actualSensorType.equalsIgnoreCase("bme680") && sensors.find("hdc1080") != sensors.end()) {
+                fallbackSensor = "hdc1080";
+                Serial.printf("[SensorRegistry] BME680 not available, trying fallback HDC1080 for %s\n", measurement.c_str());
+            } else if (actualSensorType.equalsIgnoreCase("hdc1080") && sensors.find("bme680") != sensors.end()) {
+                fallbackSensor = "bme680";
+                Serial.printf("[SensorRegistry] HDC1080 not available, trying fallback BME680 for %s\n", measurement.c_str());
+            }
+            
+            if (fallbackSensor.length() > 0) {
+                return sensors[fallbackSensor]->readValue(measurement);
+            }
+        }
+        
         return ERROR_SENSOR_NOT_FOUND;
     }
     
-    return sensors[sensorType]->readValue(measurement);
+    return sensors[actualSensorType]->readValue(measurement);
 }
 
 bool SensorRegistry::hasSensor(const String& sensorType) const {

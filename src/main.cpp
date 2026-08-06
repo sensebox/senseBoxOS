@@ -22,6 +22,7 @@
 #include "peripherals/sensors/light.h"
 
 BME680Sensor BME680Sensor;
+HDC1080Sensor HDC1080Sensor;
 LightSensor lightSensor;
 
 void setup() {
@@ -32,17 +33,28 @@ void setup() {
   initDisplay();
   initBitmaps();
   
-  // Try to initialize BME680, only register if available
-  if (BME680Sensor.begin()) {
+  // Try to initialize temperature/humidity sensors
+  bool bme680Available = BME680Sensor.begin();
+  bool hdc1080Available = HDC1080Sensor.begin();
+  
+  if (bme680Available) {
     sensorRegistry.registerSensor("bme680", &BME680Sensor);
+    Serial.println("[Sensor] BME680 detected and registered");
   } else {
-    Serial.println("BME680 not available - sensor not registered");
+    Serial.println("[Sensor] BME680 not available");
+  }
+  
+  if (hdc1080Available) {
+    sensorRegistry.registerSensor("hdc1080", &HDC1080Sensor);
+    Serial.println("[Sensor] HDC1080 detected and registered");
+  } else {
+    Serial.println("[Sensor] HDC1080 not available");
   }
   
   // Initialize and register light sensor
   if (lightSensor.begin()) {
     sensorRegistry.registerSensor("board", &lightSensor);
-    Serial.println("Light sensor registered as 'board'");
+    Serial.println("[Sensor] Light sensor registered as 'board'");
   }
 
   initButton();
