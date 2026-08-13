@@ -46,4 +46,9 @@ private:
     float getAccelerationZ();
     float getTemperature();
     float calculateMagnitude(float x, float y, float z);
+
+    // I2C identification helpers (all sensors share address 0x68)
+    bool i2cDevicePresent(uint8_t address);
+    bool readRegister8(uint8_t address, uint8_t reg, uint8_t& value);
+    AccelSensorType identifySensor();
 };

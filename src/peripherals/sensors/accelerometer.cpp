@@ -19,37 +19,138 @@ String AccelerometerSensor::getSensorType() const {
     return "accelerometer";
 }
 
-bool AccelerometerSensor::begin() {
-    Wire1.begin();
-    
-    // Try ICM20948 first (preferred sensor)
-    if (icm2.begin_I2C(0x68, &Wire1)) {
-        icm2.setAccelRange(ICM20948_ACCEL_RANGE_8_G);
-        icm2.setAccelRateDivisor(10);
-        activeSensor = ACCEL_ICM20948;
-        Serial.println("[Accelerometer] ICM20948 detected and initialized");
-        return true;
+// WHO_AM_I register/value constants (all sensors live on I2C address 0x68)
+#define ACCEL_I2C_ADDRESS      0x68
+#define ICM20948_WHOAMI_REG    0x00
+#define ICM20948_WHOAMI_VAL    0xEA
+#define IMU_WHOAMI_REG         0x75  // shared by MPU6050 and ICM42670P
+#define MPU6050_WHOAMI_VAL     0x68
+#define ICM42670P_WHOAMI_VAL   0x67
+
+bool AccelerometerSensor::i2cDevicePresent(uint8_t address) {
+    Wire1.beginTransmission(address);
+    return (Wire1.endTransmission() == 0);
+}
+
+bool AccelerometerSensor::readRegister8(uint8_t address, uint8_t reg, uint8_t& value) {
+    Wire1.beginTransmission(address);
+    Wire1.write(reg);
+    if (Wire1.endTransmission(false) != 0) {
+        return false;
     }
-    
-    // If ICM20948 fails, try ICM42670P
-    if (icm.begin() == 0) {
-        icm.startAccel(21, 8); // Accel ODR = 100 Hz, Range = 8G
-        activeSensor = ACCEL_ICM42670P;
-        Serial.println("[Accelerometer] ICM42670P detected and initialized");
-        return true;
+    if (Wire1.requestFrom((int)address, 1) != 1) {
+        return false;
+    }
+    value = Wire1.read();
+    return true;
+}
+
+AccelSensorType AccelerometerSensor::identifySensor() {
+    // Make sure a device actually ACKs before reading registers (avoids bus hang)
+    if (!i2cDevicePresent(ACCEL_I2C_ADDRESS)) {
+        Serial.println("[Accelerometer] No I2C device at 0x68");
+        return ACCEL_NONE;
     }
 
-    // If ICM42670P fails, try MPU6050 (fallback)
-    if (mpu.begin(0x68, &Wire1)) {
-        mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-        mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-        activeSensor = ACCEL_MPU6050;
-        Serial.println("[Accelerometer] MPU6050 detected and initialized");
-        return true;
+    uint8_t whoami = 0;
+
+    // Dump first few registers for debugging
+    Serial.println("[Accelerometer] Diagnostic register dump at 0x68:");
+    for (uint8_t reg = 0x00; reg <= 0x10; reg += 0x05) {
+        uint8_t val;
+        if (readRegister8(ACCEL_I2C_ADDRESS, reg, val)) {
+            Serial.printf("[Accelerometer]   Reg 0x%02X = 0x%02X\n", reg, val);
+        } else {
+            Serial.printf("[Accelerometer]   Reg 0x%02X = READ FAILED\n", reg);
+        }
     }
-    
+
+    // ICM20948 uses register 0x00 for WHO_AM_I (but may need bank selection)
+    if (readRegister8(ACCEL_I2C_ADDRESS, ICM20948_WHOAMI_REG, whoami)) {
+        Serial.printf("[Accelerometer] WHO_AM_I(0x00) = 0x%02X\n", whoami);
+        // ICM20948 valid WHO_AM_I values: 0xEA (standard) or could be read from different bank
+        if (whoami == ICM20948_WHOAMI_VAL || whoami == 0xE0 || whoami == 0xE1) {
+            Serial.println("[Accelerometer] Detected as ICM20948 (0x00 register)");
+            return ACCEL_ICM20948;
+        }
+    }
+
+    // MPU6050 and ICM42670P use register 0x75 for WHO_AM_I
+    if (readRegister8(ACCEL_I2C_ADDRESS, IMU_WHOAMI_REG, whoami)) {
+        Serial.printf("[Accelerometer] WHO_AM_I(0x75) = 0x%02X\n", whoami);
+        if (whoami == ICM42670P_WHOAMI_VAL) {
+            Serial.println("[Accelerometer] Detected as ICM42670P (0x75 register)");
+            return ACCEL_ICM42670P;
+        }
+        // MPU6050 standard is 0x68, but hardware variants may return different values
+        // Accept 0x68 (standard), 0x1F, 0x21, or other MPU-family values
+        if (whoami == MPU6050_WHOAMI_VAL || whoami == 0x1F || whoami == 0x21) {
+            Serial.println("[Accelerometer] Detected as MPU6050 (0x75 register)");
+            return ACCEL_MPU6050;
+        }
+    }
+
+    Serial.println("[Accelerometer] Unknown WHO_AM_I response - possible alternate ICM variant or custom config");
+    return ACCEL_NONE;
+}
+
+bool AccelerometerSensor::begin() {
+    // Wire1 should already be initialized by main.cpp
+    Serial.println("[Accelerometer] Attempting to initialize sensors...");
+    delay(100);  // Small delay to allow I2C bus to settle
+
+    // Identify the connected chip by its WHO_AM_I register before calling any
+    // library begin(). This avoids the library probing hanging the I2C bus when
+    // the wrong sensor sits on the shared 0x68 address.
+    AccelSensorType detected = identifySensor();
+
+    switch (detected) {
+        case ACCEL_ICM20948:
+            Serial.println("[Accelerometer] ICM20948 identified, initializing...");
+            if (icm2.begin_I2C(ACCEL_I2C_ADDRESS, &Wire1)) {
+                icm2.setAccelRange(ICM20948_ACCEL_RANGE_8_G);
+                icm2.setAccelRateDivisor(10);
+                activeSensor = ACCEL_ICM20948;
+                initialized = true;
+                Serial.println("[Accelerometer] ICM20948 detected and initialized");
+                return true;
+            }
+            Serial.println("[Accelerometer] ICM20948 init failed after identification");
+            break;
+
+        case ACCEL_ICM42670P:
+            Serial.println("[Accelerometer] ICM42670P identified, initializing...");
+            if (icm.begin() == 0) {
+                icm.startAccel(21, 8); // Accel ODR = 100 Hz, Range = 8G
+                activeSensor = ACCEL_ICM42670P;
+                initialized = true;
+                Serial.println("[Accelerometer] ICM42670P detected and initialized");
+                return true;
+            }
+            Serial.println("[Accelerometer] ICM42670P init failed after identification");
+            break;
+
+        case ACCEL_MPU6050:
+            Serial.println("[Accelerometer] MPU6050 identified, initializing...");
+            if (mpu.begin(ACCEL_I2C_ADDRESS, &Wire1)) {
+                mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+                mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+                activeSensor = ACCEL_MPU6050;
+                initialized = true;
+                Serial.println("[Accelerometer] MPU6050 detected and initialized");
+                return true;
+            }
+            Serial.println("[Accelerometer] MPU6050 init failed after identification");
+            break;
+
+        case ACCEL_NONE:
+        default:
+            break;
+    }
+
     Serial.println("[Accelerometer] No accelerometer sensor found!");
     activeSensor = ACCEL_NONE;
+    initialized = false;
     return false;
 }
 

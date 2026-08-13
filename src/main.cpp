@@ -20,55 +20,36 @@
 #include "peripherals/sensors/hdc.h"
 #include "peripherals/sensors/bme680.h"
 #include "peripherals/sensors/light.h"
-#include "peripherals/sensors/accelerometer.h"
 
 BME680Sensor BME680Sensor;
-HDC1080Sensor HDC1080Sensor;
 LightSensor lightSensor;
-AccelerometerSensor accelerometerSensor;
 
 void setup() {
   serialModule.setup();
+
+  // Initialize I2C buses early - needed for sensors
+  Wire.begin();
+  Wire1.begin(SDA1, SCL1);  // Accelerometer bus (senseBox MCU-S2: SDA=45, SCL=42)
 
   setupCommandMap();
   initLedRGB();
   initDisplay();
   initBitmaps();
   
-  // Try to initialize temperature/humidity sensors
-  bool bme680Available = BME680Sensor.begin();
-  bool hdc1080Available = HDC1080Sensor.begin();
-  
-  if (bme680Available) {
+  // Try to initialize BME680, only register if available
+  if (BME680Sensor.begin()) {
     sensorRegistry.registerSensor("bme680", &BME680Sensor);
-    Serial.println("[Sensor] BME680 detected and registered");
   } else {
-    Serial.println("[Sensor] BME680 not available");
-  }
-  
-  if (hdc1080Available) {
-    sensorRegistry.registerSensor("hdc1080", &HDC1080Sensor);
-    Serial.println("[Sensor] HDC1080 detected and registered");
-  } else {
-    Serial.println("[Sensor] HDC1080 not available");
+    Serial.println("BME680 not available - sensor not registered");
   }
   
   // Initialize and register light sensor
   if (lightSensor.begin()) {
     sensorRegistry.registerSensor("board", &lightSensor);
-    Serial.println("[Sensor] Light sensor registered as 'board'");
-  }
-  
-  // Initialize and register accelerometer sensor
-  if (accelerometerSensor.begin()) {
-    sensorRegistry.registerSensor("accelerometer", &accelerometerSensor);
-    Serial.println("[Sensor] Accelerometer registered");
-  } else {
-    Serial.println("[Sensor] Accelerometer not available");
+    Serial.println("Light sensor registered as 'board'");
   }
 
   initButton();
-  Wire.begin();
 
   // Show startup message immediately (assume no BLE for fastest feedback)
   Serial.println("Showing initial display message...");
